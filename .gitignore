@@ -1,0 +1,14 @@
+build/
+build-*/
+.cache/
+compile_commands.json
+CMakeUserPresets.json
+*.user
+*.autosave
+.idea/
+.vscode/
+# Local palette reference built in the CADe SIMU app (work in progress).
+/everything files/
+
+*.png
+!docs/**/*.png
