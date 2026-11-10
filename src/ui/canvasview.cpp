@@ -2,12 +2,15 @@
 
 #include <QGraphicsScene>
 #include <QImage>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QScrollBar>
 #include <QVarLengthArray>
 #include <QWheelEvent>
 #include <QtMath>
+
+#include <algorithm>
 
 #include "ui/caditem.h"
 #include "ui/symbols.h"
@@ -39,6 +42,7 @@ CanvasView::CanvasView(QWidget* parent)
     setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setBackgroundBrush(QColor(251, 251, 251));
     setMouseTracking(true);
+    setFocusPolicy(Qt::StrongFocus);
 
     connect(m_scene, &QGraphicsScene::selectionChanged, this, &CanvasView::emitSelection);
 
@@ -47,12 +51,17 @@ CanvasView::CanvasView(QWidget* parent)
 
 void CanvasView::setDocument(const cad::Document& document)
 {
+    setObjects(document.objects);
+}
+
+void CanvasView::setObjects(const QList<cad::Object>& objects)
+{
     clearDocument();
 
-    for (const cad::Object& object : document.objects) {
+    for (const cad::Object& object : objects) {
         if (object.type <= 0)
             continue;
-        m_scene->addItem(new CadItem(object));
+        addCadItem(object);
     }
 
     QRectF bounds = m_scene->itemsBoundingRect();
@@ -62,10 +71,95 @@ void CanvasView::setDocument(const cad::Document& document)
     zoomAll();
 }
 
+void CanvasView::addCadItem(const cad::Object& object)
+{
+    auto* item = new CadItem(object);
+    item->setEditable(true);
+    m_scene->addItem(item);
+    m_nextId = qMax(m_nextId, object.id + 1);
+}
+
+QList<cad::Object> CanvasView::objects() const
+{
+    QList<cad::Object> result;
+    for (QGraphicsItem* item : m_scene->items()) {
+        if (auto* cadItem = qgraphicsitem_cast<CadItem*>(item))
+            result.append(cadItem->object());
+    }
+
+    std::sort(result.begin(), result.end(), [](const cad::Object& a, const cad::Object& b) {
+        return a.id < b.id;
+    });
+    return result;
+}
+
 void CanvasView::clearDocument()
 {
     m_scene->clear();
     resetTransform();
+    cancelInsert();
+    m_nextId = 1;
+}
+
+void CanvasView::insertObject(cad::Object object)
+{
+    if (object.id < 0)
+        object.id = m_nextId++;
+    else
+        m_nextId = qMax(m_nextId, object.id + 1);
+
+    auto* item = new CadItem(object);
+    item->setEditable(true);
+    m_scene->addItem(item);
+
+    m_scene->clearSelection();
+    item->setSelected(true);
+    emit documentEdited();
+
+    const QRectF bounds = m_scene->itemsBoundingRect().adjusted(-60, -60, 60, 60);
+    if (bounds != m_scene->sceneRect())
+        m_scene->setSceneRect(bounds);
+}
+
+void CanvasView::beginInsert(const cad::Object& prototype)
+{
+    m_pending = prototype;
+    m_hasPending = true;
+    viewport()->setCursor(Qt::CrossCursor);
+}
+
+void CanvasView::cancelInsert()
+{
+    m_hasPending = false;
+    viewport()->unsetCursor();
+}
+
+void CanvasView::deleteSelection()
+{
+    const QList<QGraphicsItem*> selected = m_scene->selectedItems();
+    if (selected.isEmpty())
+        return;
+
+    for (QGraphicsItem* item : selected) {
+        m_scene->removeItem(item);
+        delete item;
+    }
+
+    emit selectionChanged(nullptr);
+    emit documentEdited();
+}
+
+void CanvasView::selectAll()
+{
+    const QList<QGraphicsItem*> items = m_scene->items();
+    for (QGraphicsItem* item : items)
+        item->setSelected(true);
+}
+
+QPointF CanvasView::viewCenterInUnits() const
+{
+    const QPointF scenePosition = mapToScene(viewport()->rect().center());
+    return scenePosition / kUnit;
 }
 
 void CanvasView::zoomIn()
@@ -174,6 +268,23 @@ void CanvasView::applyZoom(double factor)
 
 void CanvasView::mousePressEvent(QMouseEvent* event)
 {
+    if (m_hasPending && event->button() == Qt::LeftButton) {
+        const QPointF scenePosition = mapToScene(event->pos());
+        const double step = kGridStepUnits;
+        const int x = qRound(scenePosition.x() / kUnit / step) * int(step);
+        const int y = qRound(scenePosition.y() / kUnit / step) * int(step);
+
+        cad::Object object = m_pending;
+        object.fields[object.pinFlagCount + 0].value = x;
+        object.fields[object.pinFlagCount + 1].value = y;
+        object.id = -1;
+
+        cancelInsert();
+        insertObject(object);
+        event->accept();
+        return;
+    }
+
     if (event->button() == Qt::MiddleButton) {
         m_panning = true;
         m_panStart = event->pos();
@@ -212,6 +323,23 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
     }
 
     QGraphicsView::mouseReleaseEvent(event);
+}
+
+void CanvasView::keyPressEvent(QKeyEvent* event)
+{
+    if (event->key() == Qt::Key_Escape && m_hasPending) {
+        cancelInsert();
+        event->accept();
+        return;
+    }
+
+    if (event->key() == Qt::Key_Delete && !m_scene->selectedItems().isEmpty()) {
+        deleteSelection();
+        event->accept();
+        return;
+    }
+
+    QGraphicsView::keyPressEvent(event);
 }
 
 bool renderToPng(const cad::Document& document,

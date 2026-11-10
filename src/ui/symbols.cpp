@@ -65,6 +65,7 @@ enum class Family {
     Outlet,
     Busbar,
     Analogue,
+    Actuator,
 };
 
 struct Info {
@@ -172,7 +173,7 @@ Info describe(const cad::Object& object)
     }
 
     if (type == 10550) {
-        info.family = Family::Motor;
+        info.family = Family::Actuator;
         return info;
     }
 
@@ -280,12 +281,13 @@ QRectF symbolBox(const cad::Object& object)
     case Family::Motor:
         return QRectF(-3.0 * kUnit, 0, ((info.poles > 1 ? info.poles - 1 : 0)) * pitchPx()
                                               + 6.0 * kUnit,
-                      20.0 * kUnit);
+                      24.0 * kUnit);
 
     case Family::Terminal:
     case Family::Plc:
     case Family::Logic:
-    case Family::Analogue: {
+    case Family::Analogue:
+    case Family::Actuator: {
         if (object.boxWidth() > 0 && object.boxHeight() > 0) {
             return QRectF(object.boxLeft() * kUnit, object.boxTop() * kUnit,
                           object.boxWidth() * kUnit, object.boxHeight() * kUnit);
@@ -468,19 +470,29 @@ void drawTimer(QPainter* painter)
     painter->drawLine(box.bottomLeft(), box.topRight());
 }
 
-void drawMotor(QPainter* painter, const Info& info)
+void drawMotor(QPainter* painter, const cad::Object& object, const Info& info)
 {
     const double poles = info.poles > 1 ? info.poles : 3;
-    const QPointF center((poles - 1) * pitchPx() / 2.0, 11.0 * kUnit);
-    const double radius = 8.0 * kUnit;
+    const double height = object.boxHeight() > 0 ? object.boxHeight() : 24.0;
+    const QPointF center((poles - 1) * pitchPx() / 2.0, height / 2.0 * kUnit);
+    const double radius = qMax(4.0, height / 2.0 - 1.5) * kUnit;
 
+    const double topPinEnd = qMax(0.0, center.y() - radius);
     for (int pin = 0; pin < qMin(3, info.poles); ++pin)
-        drawPinStub(painter, poleX(pin), 0.0, 3.0 * kUnit);
+        drawPinStub(painter, poleX(pin), 0.0, topPinEnd);
 
     if (info.poles >= 4) {
-        drawPinStub(painter, poleX(3), 0.0, 11.0 * kUnit);
-        painter->drawLine(QPointF(poleX(3), 11.0 * kUnit),
-                          QPointF(center.x() + radius, 11.0 * kUnit));
+        drawPinStub(painter, poleX(3), 0.0, center.y());
+        painter->drawLine(QPointF(poleX(3), center.y()),
+                          QPointF(center.x() + radius, center.y()));
+    }
+
+    // Y/D and two-speed motors bring the second winding out of the bottom.
+    if (info.poles >= 6) {
+        for (int pin = 0; pin < 3; ++pin) {
+            painter->drawLine(QPointF(poleX(pin), center.y() + radius),
+                              QPointF(poleX(pin), height * kUnit));
+        }
     }
 
     painter->drawEllipse(center, radius, radius);
@@ -490,7 +502,7 @@ void drawMotor(QPainter* painter, const Info& info)
     painter->setFont(font);
     painter->drawText(QRectF(center.x() - radius, center.y() - radius,
                              radius * 2.0, radius * 2.0),
-                      Qt::AlignCenter | Qt::AlignHCenter, QStringLiteral("M"));
+                      Qt::AlignCenter, QStringLiteral("M"));
 }
 
 void drawResistor(QPainter* painter, const Info& info)
@@ -687,6 +699,30 @@ void drawBlock(QPainter* painter, const cad::Object& object, const QString& capt
                       object.label.isEmpty() ? caption : object.label);
 }
 
+void drawActuator(QPainter* painter, const cad::Object& object)
+{
+    QRectF box(-15.0 * kUnit, -15.0 * kUnit, 60.0 * kUnit, 30.0 * kUnit);
+    if (object.boxWidth() > 0 && object.boxHeight() > 0) {
+        box = QRectF(object.boxLeft() * kUnit, object.boxTop() * kUnit,
+                     object.boxWidth() * kUnit, object.boxHeight() * kUnit);
+    }
+
+    const double size = qMin(box.height(), 24.0 * kUnit);
+    const QRectF motor(box.left(), box.center().y() - size / 2.0, size, size);
+    painter->drawRect(motor);
+
+    QFont font = labelFont();
+    font.setBold(true);
+    painter->setFont(font);
+    painter->drawText(motor, Qt::AlignCenter, QStringLiteral("M"));
+
+    // Linear actuator: a rod running from the motor to the far end.
+    painter->drawLine(QPointF(motor.right(), box.center().y()),
+                      QPointF(box.right(), box.center().y()));
+    painter->drawLine(QPointF(box.right(), box.center().y() - 1.5 * kUnit),
+                      QPointF(box.right(), box.center().y() + 1.5 * kUnit));
+}
+
 void drawBusbar(QPainter* painter, const Info& info)
 {
     const int poles = qMax(3, info.poles);
@@ -856,7 +892,7 @@ void paintObject(QPainter* painter, const cad::Object& object, bool selected)
     if (object.isJunction()) {
         painter->setPen(Qt::NoPen);
         painter->setBrush(QColor(0, 0, 0));
-        painter->drawEllipse(QPointF(0, 0), 1.8, 1.8);
+        painter->drawEllipse(QPointF(0, 0), 1.5 * kUnit, 1.5 * kUnit);
         painter->restore();
         return;
     }
@@ -867,7 +903,7 @@ void paintObject(QPainter* painter, const cad::Object& object, bool selected)
 
     switch (info.family) {
     case Family::Motor:
-        drawMotor(painter, info);
+        drawMotor(painter, object, info);
         break;
     case Family::Contactor:
         drawContactorPoles(painter, info);
@@ -935,6 +971,9 @@ void paintObject(QPainter* painter, const cad::Object& object, bool selected)
         break;
     case Family::Busbar:
         drawBusbar(painter, info);
+        break;
+    case Family::Actuator:
+        drawActuator(painter, object);
         break;
     case Family::Analogue:
         drawBlock(painter, object, QStringLiteral("A"));

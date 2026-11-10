@@ -20,6 +20,7 @@
 #include <QStatusBar>
 #include <QTreeWidget>
 #include <QUrl>
+#include <QtMath>
 
 #include "ui/canvasview.h"
 #include "ui/sheet.h"
@@ -29,7 +30,18 @@ namespace {
 
 QString fileFilter()
 {
-    return QObject::tr("CADe SIMU files (*.cad);;All files (*)");
+    return QObject::tr("bettercadesimu schematics (*.bcs);;CADe SIMU files (*.cad);;All files (*)");
+}
+
+// Wire and drawing primitives need dedicated drawing tools; they cannot be
+// placed as standalone symbols.
+bool isPlaceable(int type)
+{
+    if (type <= 8)
+        return false;
+    if (type >= 4000 && type <= 4019)
+        return false;
+    return true;
 }
 
 } // namespace
@@ -51,9 +63,11 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(m_view, &CanvasView::cursorMoved, this, &MainWindow::updateCursorPosition);
     connect(m_view, &CanvasView::selectionChanged, this, &MainWindow::updateInspector);
+    connect(m_view, &CanvasView::documentEdited, this, &MainWindow::markModified);
 
     readSettings();
     updateWindowTitle();
+    updateDocumentLabel();
 
     resize(1280, 860);
     statusBar()->showMessage(tr("Open a .cad file, or drop one onto the window."), 6000);
@@ -65,13 +79,28 @@ void MainWindow::createMenus()
 {
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
 
+    QAction* newAction = fileMenu->addAction(tr("&New"));
+    newAction->setShortcut(QKeySequence::New);
+    newAction->setStatusTip(tr("Start an empty schematic"));
+    connect(newAction, &QAction::triggered, this, &MainWindow::newFile);
+
     QAction* openAction = fileMenu->addAction(tr("&Open…"));
     openAction->setShortcut(QKeySequence::Open);
-    openAction->setStatusTip(tr("Open a CADe SIMU document"));
+    openAction->setStatusTip(tr("Open a schematic or a CADe SIMU document"));
     connect(openAction, &QAction::triggered, this, &MainWindow::openFileDialog);
 
     m_recentMenu = fileMenu->addMenu(tr("Open &Recent"));
     connect(m_recentMenu, &QMenu::aboutToShow, this, &MainWindow::rebuildRecentMenu);
+
+    QAction* saveAction = fileMenu->addAction(tr("&Save"));
+    saveAction->setShortcut(QKeySequence::Save);
+    saveAction->setStatusTip(tr("Save the schematic"));
+    connect(saveAction, &QAction::triggered, this, &MainWindow::saveFile);
+
+    QAction* saveAsAction = fileMenu->addAction(tr("Save &As…"));
+    saveAsAction->setShortcut(QKeySequence::SaveAs);
+    saveAsAction->setStatusTip(tr("Save the schematic under a new name"));
+    connect(saveAsAction, &QAction::triggered, this, &MainWindow::saveFileAs);
 
     QAction* reloadAction = fileMenu->addAction(tr("&Reload"));
     reloadAction->setShortcut(QKeySequence::Refresh);
@@ -83,6 +112,17 @@ void MainWindow::createMenus()
     QAction* quitAction = fileMenu->addAction(tr("E&xit"));
     quitAction->setShortcut(QKeySequence::Quit);
     connect(quitAction, &QAction::triggered, this, &QWidget::close);
+
+    QMenu* editMenu = menuBar()->addMenu(tr("&Edit"));
+
+    QAction* deleteAction = editMenu->addAction(tr("&Delete"));
+    deleteAction->setShortcut(QKeySequence::Delete);
+    deleteAction->setStatusTip(tr("Delete the selected objects"));
+    connect(deleteAction, &QAction::triggered, this, &MainWindow::deleteSelection);
+
+    QAction* selectAllAction = editMenu->addAction(tr("Select &All"));
+    selectAllAction->setShortcut(QKeySequence::SelectAll);
+    connect(selectAllAction, &QAction::triggered, this, &MainWindow::selectAll);
 
     QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
 
@@ -167,6 +207,7 @@ void MainWindow::createPaletteDock()
 
     m_paletteTree->expandToDepth(0);
     connect(m_paletteTree, &QTreeWidget::itemClicked, this, &MainWindow::showPaletteItem);
+    connect(m_paletteTree, &QTreeWidget::itemDoubleClicked, this, &MainWindow::placePaletteItem);
 
     dock->setWidget(m_paletteTree);
     addDockWidget(Qt::LeftDockWidgetArea, dock);
@@ -175,13 +216,24 @@ void MainWindow::createPaletteDock()
 void MainWindow::showPaletteItem(QTreeWidgetItem* item, int column)
 {
     Q_UNUSED(column)
-    if (!item || item->data(0, Qt::UserRole).isNull())
+    if (!item || item->data(0, Qt::UserRole).isNull()) {
+        m_view->cancelInsert();
         return;
+    }
 
     const int type = item->data(0, Qt::UserRole).toInt();
     const cad::PaletteItem* entry = m_palette.find(type);
     if (!entry)
         return;
+
+    if (!isPlaceable(entry->type)) {
+        m_view->cancelInsert();
+        m_inspector->setPlainText(tr("%1\n\nThis palette entry is a drawing or "
+                                     "wiring primitive and needs a dedicated tool.")
+                                      .arg(entry->displayName()));
+        statusBar()->showMessage(tr("%1 is not placeable yet").arg(entry->displayName()), 4000);
+        return;
+    }
 
     QStringList lines;
     lines << entry->displayName();
@@ -191,10 +243,43 @@ void MainWindow::showPaletteItem(QTreeWidgetItem* item, int column)
         lines << tr("pins:  %1").arg(entry->pins.join(QLatin1Char(' ')));
     lines << tr("box:   %1 x %2 units").arg(entry->box.width()).arg(entry->box.height());
     lines << QString();
-    lines << tr("Placing symbols is not implemented yet.");
+    lines << tr("Click the canvas to place this symbol.");
+    lines << tr("Double-click the palette entry to place it in the centre.");
+    lines << tr("Press Esc to cancel placement.");
 
     m_inspector->setPlainText(lines.join(QLatin1Char('\n')));
-    statusBar()->showMessage(tr("%1 (type %2)").arg(entry->displayName()).arg(entry->type), 3000);
+    m_view->beginInsert(entry->makeObject());
+    statusBar()->showMessage(tr("Click the canvas to place %1 (Esc to cancel)")
+                                 .arg(entry->displayName()),
+                             5000);
+}
+
+void MainWindow::placePaletteItem(QTreeWidgetItem* item, int column)
+{
+    Q_UNUSED(column)
+    if (!item || item->data(0, Qt::UserRole).isNull())
+        return;
+
+    const cad::PaletteItem* entry = m_palette.find(item->data(0, Qt::UserRole).toInt());
+    if (!entry || !isPlaceable(entry->type))
+        return;
+
+    m_view->cancelInsert();
+
+    cad::Object object = entry->makeObject();
+    const QPointF centre = m_view->viewCenterInUnits();
+    const double step = 3.0;
+    const int x = int(qRound(centre.x() / step) * step);
+    const int y = int(qRound(centre.y() / step) * step);
+    object.fields[object.pinFlagCount + 0].value = x;
+    object.fields[object.pinFlagCount + 1].value = y;
+
+    m_view->insertObject(object);
+    statusBar()->showMessage(tr("Placed %1 at (%2, %3)")
+                                 .arg(entry->displayName())
+                                 .arg(x)
+                                 .arg(y),
+                             4000);
 }
 
 void MainWindow::createStatusBar()
@@ -208,8 +293,27 @@ void MainWindow::createStatusBar()
     statusBar()->addPermanentWidget(m_documentLabel);
 }
 
+void MainWindow::newFile()
+{
+    if (!maybeSave())
+        return;
+
+    m_project = cad::Project{};
+    m_currentPath.clear();
+    m_view->setObjects({});
+
+    updateWindowTitle();
+    updateDocumentLabel();
+    updateInspector(nullptr);
+    m_positionLabel->setText(tr("x: —   y: —"));
+    statusBar()->showMessage(tr("New schematic"), 3000);
+}
+
 void MainWindow::openFileDialog()
 {
+    if (!maybeSave())
+        return;
+
     QSettings settings;
     const QString lastDir = settings.value(QStringLiteral("files/lastDir"),
                                            QDir::homePath()).toString();
@@ -217,10 +321,17 @@ void MainWindow::openFileDialog()
     const QString path = QFileDialog::getOpenFileName(this, tr("Open schematic"),
                                                       lastDir, fileFilter());
     if (!path.isEmpty())
-        openFile(path);
+        loadFile(path);
 }
 
 bool MainWindow::openFile(const QString& path)
+{
+    if (!maybeSave())
+        return false;
+    return loadFile(path);
+}
+
+bool MainWindow::loadFile(const QString& path)
 {
     const QFileInfo info(path);
     if (!info.exists() || !info.isFile()) {
@@ -229,16 +340,27 @@ bool MainWindow::openFile(const QString& path)
         return false;
     }
 
+    const bool native = info.suffix().compare(QStringLiteral("bcs"), Qt::CaseInsensitive) == 0;
+
     QString error;
-    cad::Document document = cad::Document::load(path, &error);
+    cad::Project project;
+    if (native) {
+        project = cad::Project::load(path, &error);
+    } else {
+        const cad::Document document = cad::Document::load(path, &error);
+        if (error.isEmpty())
+            project = cad::Project::fromDocument(document);
+    }
+
     if (!error.isEmpty()) {
         QMessageBox::warning(this, tr("Open schematic"), error);
         return false;
     }
 
-    m_document = document;
+    m_project = project;
+    m_project.modified = false;
     m_currentPath = info.absoluteFilePath();
-    m_view->setDocument(m_document);
+    m_view->setObjects(m_project.objects);
 
     addRecentFile(m_currentPath);
 
@@ -246,19 +368,93 @@ bool MainWindow::openFile(const QString& path)
     settings.setValue(QStringLiteral("files/lastDir"), info.absolutePath());
 
     updateWindowTitle();
+    updateDocumentLabel();
     updateInspector(nullptr);
     m_positionLabel->setText(tr("x: —   y: —"));
 
-    QString summary = tr("%n object(s) · %1 record(s)", "", int(m_document.objects.size()))
-                          .arg(m_document.recordCount);
-    if (!m_document.warnings.isEmpty())
-        summary += tr(" · %n warning(s)", "", int(m_document.warnings.size()));
-
-    m_documentLabel->setText(summary);
-    m_documentLabel->setToolTip(m_document.warnings.join(QLatin1Char('\n')));
-
     statusBar()->showMessage(tr("Opened %1").arg(info.fileName()), 4000);
     return true;
+}
+
+void MainWindow::saveFile()
+{
+    if (m_currentPath.isEmpty()
+        || QFileInfo(m_currentPath).suffix().compare(QStringLiteral("bcs"),
+                                                     Qt::CaseInsensitive)
+               != 0) {
+        saveFileAs();
+        return;
+    }
+
+    saveTo(m_currentPath);
+}
+
+void MainWindow::saveFileAs()
+{
+    QSettings settings;
+    QString suggested = m_currentPath;
+    if (suggested.isEmpty() || !suggested.endsWith(QStringLiteral(".bcs"), Qt::CaseInsensitive))
+        suggested = QDir(settings.value(QStringLiteral("files/lastDir"), QDir::homePath()).toString())
+                        .filePath(QStringLiteral("schematic.bcs"));
+
+    const QString path = QFileDialog::getSaveFileName(
+        this, tr("Save schematic"), suggested,
+        tr("bettercadesimu schematics (*.bcs);;All files (*)"));
+    if (path.isEmpty())
+        return;
+
+    QString target = path;
+    if (QFileInfo(target).suffix().isEmpty())
+        target += QStringLiteral(".bcs");
+
+    saveTo(target);
+}
+
+bool MainWindow::saveTo(const QString& path)
+{
+    cad::Project project = m_project;
+    project.objects = m_view->objects();
+    project.rebuildNextId();
+
+    QString error;
+    if (!project.save(path, &error)) {
+        QMessageBox::warning(this, tr("Save schematic"), error);
+        return false;
+    }
+
+    m_project = project;
+    m_project.path = path;
+    m_project.modified = false;
+    m_currentPath = QFileInfo(path).absoluteFilePath();
+
+    addRecentFile(m_currentPath);
+    QSettings settings;
+    settings.setValue(QStringLiteral("files/lastDir"), QFileInfo(path).absolutePath());
+
+    updateWindowTitle();
+    updateDocumentLabel();
+    statusBar()->showMessage(tr("Saved %1").arg(QFileInfo(path).fileName()), 4000);
+    return true;
+}
+
+bool MainWindow::maybeSave()
+{
+    if (!m_project.modified)
+        return true;
+
+    const QMessageBox::StandardButton answer = QMessageBox::warning(
+        this, tr("Unsaved changes"),
+        tr("The schematic has unsaved changes.\n\nSave them before continuing?"),
+        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel,
+        QMessageBox::Save);
+
+    if (answer == QMessageBox::Cancel)
+        return false;
+    if (answer == QMessageBox::Discard)
+        return true;
+
+    saveFile();
+    return !m_project.modified;
 }
 
 void MainWindow::reloadFile()
@@ -268,8 +464,29 @@ void MainWindow::reloadFile()
         return;
     }
 
-    openFile(m_currentPath);
-    statusBar()->showMessage(tr("Reloaded %1").arg(QFileInfo(m_currentPath).fileName()), 4000);
+    if (!maybeSave())
+        return;
+
+    const QString path = m_currentPath;
+    if (loadFile(path))
+        statusBar()->showMessage(tr("Reloaded %1").arg(QFileInfo(path).fileName()), 4000);
+}
+
+void MainWindow::deleteSelection()
+{
+    m_view->deleteSelection();
+}
+
+void MainWindow::selectAll()
+{
+    m_view->selectAll();
+}
+
+void MainWindow::markModified()
+{
+    m_project.modified = true;
+    updateWindowTitle();
+    updateDocumentLabel();
 }
 
 void MainWindow::updateCursorPosition(const QPointF& filePosition)
@@ -331,19 +548,24 @@ void MainWindow::updateInspector(const cad::Object* object)
     }
 
     lines << QString();
-    lines << tr("record %1 of %2").arg(object->definitionIndex + 1).arg(m_document.recordCount);
+    lines << tr("project: %1 object(s)").arg(m_view->objects().size());
 
     m_inspector->setPlainText(lines.join(QLatin1Char('\n')));
 }
 
 void MainWindow::updateWindowTitle()
 {
-    if (m_currentPath.isEmpty()) {
-        setWindowTitle(tr("bettercadesimu"));
-        return;
-    }
+    QString name = m_currentPath.isEmpty() ? tr("Untitled")
+                                           : QFileInfo(m_currentPath).fileName();
+    if (m_project.modified)
+        name += QLatin1Char('*');
 
-    setWindowTitle(tr("%1 — bettercadesimu").arg(QFileInfo(m_currentPath).fileName()));
+    setWindowTitle(tr("%1 — bettercadesimu").arg(name));
+}
+
+void MainWindow::updateDocumentLabel()
+{
+    m_documentLabel->setText(tr("%n object(s)", "", int(m_view->objects().size())));
 }
 
 void MainWindow::showAbout()
@@ -386,6 +608,11 @@ void MainWindow::dropEvent(QDropEvent* event)
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
+    if (!maybeSave()) {
+        event->ignore();
+        return;
+    }
+
     writeSettings();
     QMainWindow::closeEvent(event);
 }

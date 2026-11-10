@@ -6,6 +6,7 @@
 
 #include "cad/cadfile.h"
 #include "cad/palette.h"
+#include "cad/project.h"
 #include "ui/canvasview.h"
 #include "ui/mainwindow.h"
 #include "ui/sheet.h"
@@ -59,6 +60,22 @@ void dumpPalette(const cad::Palette& palette)
     out.flush();
 }
 
+bool loadAsProject(const QString& path, cad::Project* project, QString* error)
+{
+    const QFileInfo info(path);
+    if (info.suffix().compare(QStringLiteral("bcs"), Qt::CaseInsensitive) == 0) {
+        *project = cad::Project::load(path, error);
+        return error->isEmpty();
+    }
+
+    const cad::Document document = cad::Document::load(path, error);
+    if (!error->isEmpty())
+        return false;
+
+    *project = cad::Project::fromDocument(document);
+    return true;
+}
+
 void dumpDocument(const cad::Document& document)
 {
     QTextStream out(stdout);
@@ -103,7 +120,8 @@ int main(int argc, char* argv[])
         const QString argument = QString::fromLocal8Bit(argv[i]);
         if (argument == QLatin1String("--dump") || argument == QLatin1String("--render")
             || argument == QLatin1String("--palette")
-            || argument == QLatin1String("--palette-sheet"))
+            || argument == QLatin1String("--palette-sheet")
+            || argument == QLatin1String("--save-project"))
             cliMode = true;
     }
 
@@ -120,7 +138,7 @@ int main(int argc, char* argv[])
 
     QCommandLineParser parser;
     parser.setApplicationDescription(
-        QStringLiteral("Clean-room viewer for CADe SIMU .cad schematics."));
+        QStringLiteral("Clean-room IEC schematic editor for CADe SIMU .cad files."));
     parser.addHelpOption();
     parser.addVersionOption();
 
@@ -138,12 +156,17 @@ int main(int argc, char* argv[])
         QStringLiteral("palette-sheet"),
         QStringLiteral("Render one symbol proof sheet per palette section."),
         QStringLiteral("directory"));
+    QCommandLineOption saveProjectOption(
+        QStringLiteral("save-project"),
+        QStringLiteral("Convert a .cad document to the native JSON project format."),
+        QStringLiteral("output.bcs"));
     parser.addOption(dumpOption);
     parser.addOption(renderOption);
     parser.addOption(paletteOption);
     parser.addOption(paletteSheetOption);
+    parser.addOption(saveProjectOption);
     parser.addPositionalArgument(QStringLiteral("file"),
-                                 QStringLiteral("A .cad document to open."));
+                                 QStringLiteral("A .cad or .bcs document to open."));
 
     parser.process(app);
 
@@ -169,6 +192,30 @@ int main(int argc, char* argv[])
         return 0;
     }
 
+    if (parser.isSet(saveProjectOption)) {
+        if (positional.isEmpty()) {
+            writeError(QStringLiteral("a .cad or .bcs file is required"));
+            return 2;
+        }
+
+        cad::Project project;
+        QString error;
+        if (!loadAsProject(positional.first(), &project, &error)) {
+            writeError(error);
+            return 1;
+        }
+
+        const QString output = parser.value(saveProjectOption);
+        if (!project.save(output, &error)) {
+            writeError(error);
+            return 1;
+        }
+
+        QTextStream(stdout) << "wrote " << QFileInfo(output).absoluteFilePath() << " ("
+                            << project.objects.size() << " objects)" << Qt::endl;
+        return 0;
+    }
+
     if (dump && render) {
         writeError(QStringLiteral("--dump and --render cannot be used together"));
         return 2;
@@ -176,16 +223,21 @@ int main(int argc, char* argv[])
 
     if (dump || render) {
         if (positional.isEmpty()) {
-            writeError(QStringLiteral("a .cad file is required"));
+            writeError(QStringLiteral("a .cad or .bcs file is required"));
             return 2;
         }
 
         QString error;
-        const cad::Document document = cad::Document::load(positional.first(), &error);
-        if (!error.isEmpty()) {
+        cad::Project project;
+        if (!loadAsProject(positional.first(), &project, &error)) {
             writeError(error);
             return 1;
         }
+
+        cad::Document document;
+        document.objects = project.objects;
+        document.recordCount = project.objects.size();
+        document.sourcePath = positional.first();
 
         if (dump) {
             dumpDocument(document);

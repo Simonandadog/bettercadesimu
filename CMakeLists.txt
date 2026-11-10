@@ -21,6 +21,8 @@ add_library(cadcore STATIC
     src/cad/cadfile.h
     src/cad/palette.cpp
     src/cad/palette.h
+    src/cad/project.cpp
+    src/cad/project.h
 )
 target_link_libraries(cadcore PUBLIC Qt6::Core)
 target_include_directories(cadcore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)

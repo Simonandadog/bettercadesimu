@@ -44,18 +44,23 @@ QString PaletteItem::displayName() const
 Object PaletteItem::makeObject() const
 {
     Object object;
+    object.id = -1;
     object.type = type;
     object.label = label;
     object.pins = pins;
-    object.pinFlagCount = kMinPinFlags;
+    object.pinFlagCount = qMax(kMinPinFlags, pins.size());
+
+    object.typeParts << QString::number(type) << label << QString();
+    object.typeParts += pins;
 
     // Tail layout: x, y, x2, y2, boxLeft, boxTop, boxWidth, boxHeight, ...
-    object.fields.reserve(kFieldCount);
-    for (int i = 0; i < kFieldCount; ++i)
+    const int fieldCount = object.pinFlagCount + kTailFields;
+    object.fields.reserve(fieldCount);
+    for (int i = 0; i < fieldCount; ++i)
         object.fields.append(Field{});
-    object.fields[kMinPinFlags + 6].value = box.width();
-    object.fields[kMinPinFlags + 7].value = box.height();
-    object.fields[kMinPinFlags + 11].value = 1;
+    object.fields[object.pinFlagCount + 6].value = box.width();
+    object.fields[object.pinFlagCount + 7].value = box.height();
+    object.fields[object.pinFlagCount + 11].value = 1;
     return object;
 }
 

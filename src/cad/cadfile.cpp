@@ -27,12 +27,13 @@ Field parseField(const QString& raw)
 
 bool Object::isLine() const
 {
-    return type == 1 || (type >= 4000 && type <= 4019);
+    return type == 1 || (type >= 4000 && type <= 4019 && type != 4001);
 }
 
 bool Object::isJunction() const
 {
-    return type == 3000 || type == 3001 || type == 3004;
+    // Type 4001 is the junction dot; the other 40xx types are wires.
+    return type == 4001;
 }
 
 QString typeName(int type)

@@ -5,8 +5,8 @@
 #include <QString>
 #include <QStringList>
 
-#include "cad/cadfile.h"
 #include "cad/palette.h"
+#include "cad/project.h"
 
 class QAction;
 class QCloseEvent;
@@ -38,12 +38,19 @@ protected:
     void closeEvent(QCloseEvent* event) override;
 
 private slots:
+    void newFile();
     void openFileDialog();
+    void saveFile();
+    void saveFileAs();
     void reloadFile();
+    void deleteSelection();
+    void selectAll();
     void showAbout();
     void updateCursorPosition(const QPointF& filePosition);
     void updateInspector(const cad::Object* object);
     void showPaletteItem(QTreeWidgetItem* item, int column);
+    void placePaletteItem(QTreeWidgetItem* item, int column);
+    void markModified();
 
 private:
     void createMenus();
@@ -51,10 +58,15 @@ private:
     void createPaletteDock();
     void createStatusBar();
     void updateWindowTitle();
+    void updateDocumentLabel();
     void readSettings();
     void writeSettings();
     void rebuildRecentMenu();
     void addRecentFile(const QString& path);
+
+    bool maybeSave();
+    bool loadFile(const QString& path);
+    bool saveTo(const QString& path);
 
     CanvasView* m_view = nullptr;
     QLabel* m_positionLabel = nullptr;
@@ -64,7 +76,7 @@ private:
     QMenu* m_recentMenu = nullptr;
     QAction* m_gridAction = nullptr;
 
-    cad::Document m_document;
+    cad::Project m_project;
     cad::Palette m_palette;
     QString m_currentPath;
     QStringList m_recentFiles;

@@ -15,6 +15,9 @@ public:
 
     const cad::Object& object() const { return m_object; }
 
+    void setEditable(bool editable);
+    bool isEditable() const { return m_editable; }
+
     QRectF boundingRect() const override;
     QPainterPath shape() const override;
     void paint(QPainter* painter,
@@ -26,11 +29,13 @@ public:
 protected:
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
+    QVariant itemChange(GraphicsItemChange change, const QVariant& value) override;
 
 private:
     cad::Object m_object;
     QRectF m_bounds;
     bool m_hovered = false;
+    bool m_editable = false;
 };
 
 } // namespace ui

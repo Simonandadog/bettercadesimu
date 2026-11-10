@@ -6,6 +6,7 @@
 
 #include "cad/cadfile.h"
 #include "cad/palette.h"
+#include "cad/project.h"
 
 namespace {
 
@@ -217,6 +218,88 @@ void testPalette()
     CHECK(broken.sections.isEmpty());
 }
 
+void testProject()
+{
+    cad::Object object;
+    object.id = -1;
+    object.type = 5000;
+    object.label = QStringLiteral("-F1");
+    object.pins = QStringList{QStringLiteral("1"), QStringLiteral("2")};
+    object.pinFlagCount = cad::kMinPinFlags;
+    object.typeParts = QStringList{QStringLiteral("5000"), QStringLiteral("-F1"),
+                                   QString(), QStringLiteral("1"), QStringLiteral("2")};
+    object.fields.reserve(cad::kFieldCount);
+    for (int i = 0; i < cad::kFieldCount; ++i)
+        object.fields.append(cad::Field{});
+    object.fields[cad::kMinPinFlags + 0].value = 21;
+    object.fields[cad::kMinPinFlags + 1].value = 6;
+    object.fields[cad::kMinPinFlags + 6].value = 6;
+    object.fields[cad::kMinPinFlags + 7].value = 15;
+    object.fields[cad::kMinPinFlags + 14].text = QStringLiteral("note");
+
+    cad::Project project;
+    const int id = project.addObject(object);
+    CHECK(id == 1);
+    CHECK(project.objects.size() == 1);
+    CHECK(project.nextId == 2);
+
+    const QByteArray json = project.toJson();
+    QString error;
+    const cad::Project restored = cad::Project::fromJson(json, &error);
+    CHECK(error.isEmpty());
+    CHECK(restored.objects.size() == 1);
+    CHECK(restored.nextId == 2);
+
+    const cad::Object* back = restored.find(1);
+    CHECK(back != nullptr);
+    if (back) {
+        CHECK(back->type == 5000);
+        CHECK(back->label == QStringLiteral("-F1"));
+        CHECK(back->pins.size() == 2);
+        CHECK(back->x() == 21);
+        CHECK(back->y() == 6);
+        CHECK(back->boxWidth() == 6);
+        CHECK(back->boxHeight() == 15);
+        CHECK(back->text() == QStringLiteral("note"));
+    }
+
+    // Objects with more than eight pins keep their extra pin-flag fields.
+    cad::Object wide;
+    wide.type = 10550;
+    wide.pins = QStringList{QStringLiteral("50"), QStringLiteral("50"), QStringLiteral("-a0"),
+                           QStringLiteral(""), QStringLiteral("-a1"), QStringLiteral("-a0"),
+                           QStringLiteral(""), QStringLiteral("-a1"), QStringLiteral("-A+"),
+                           QStringLiteral("extra")};
+    wide.pinFlagCount = wide.pins.size();
+    wide.fields.reserve(wide.pinFlagCount + cad::kTailFields);
+    for (int i = 0; i < wide.pinFlagCount + cad::kTailFields; ++i)
+        wide.fields.append(cad::Field{});
+    wide.fields[wide.pinFlagCount + 6].value = 69;
+    wide.fields[wide.pinFlagCount + 7].value = 57;
+
+    cad::Project wideProject;
+    wideProject.addObject(wide);
+    const cad::Project wideBack = cad::Project::fromJson(wideProject.toJson(), &error);
+    CHECK(error.isEmpty());
+    const cad::Object* restoredWide = wideBack.find(1);
+    CHECK(restoredWide != nullptr);
+    if (restoredWide) {
+        CHECK(restoredWide->pins.size() == 10);
+        CHECK(restoredWide->pinFlagCount == 10);
+        CHECK(restoredWide->boxWidth() == 69);
+        CHECK(restoredWide->boxHeight() == 57);
+    }
+
+    CHECK(project.removeObject(1));
+    CHECK(project.objects.isEmpty());
+    CHECK(!project.removeObject(1));
+
+    CHECK(cad::Project::fromJson(QByteArrayLiteral("{}")).objects.isEmpty());
+    const cad::Project empty = cad::Project::fromJson(QByteArrayLiteral("not json"), &error);
+    CHECK(empty.objects.isEmpty());
+    CHECK(!error.isEmpty());
+}
+
 void testFixture()
 {
     const QString fixture = qEnvironmentVariable("BETTERCADESIMU_FIXTURE");
@@ -249,6 +332,7 @@ int main()
     testTrailingTokens();
     testMetadata();
     testPalette();
+    testProject();
     testFixture();
 
     if (g_failures == 0) {

@@ -2,6 +2,7 @@
 
 #include <QGraphicsSceneHoverEvent>
 #include <QPainterPathStroker>
+#include <QtMath>
 
 #include "ui/symbols.h"
 
@@ -62,6 +63,40 @@ void CadItem::paint(QPainter* painter,
     Q_UNUSED(option)
     Q_UNUSED(widget)
     ui::paintObject(painter, m_object, isSelected() || m_hovered);
+}
+
+void CadItem::setEditable(bool editable)
+{
+    m_editable = editable;
+    setFlag(ItemIsMovable, editable);
+}
+
+QVariant CadItem::itemChange(GraphicsItemChange change, const QVariant& value)
+{
+    if (change == ItemPositionChange && m_editable) {
+        QPointF position = value.toPointF();
+        const double step = 3.0 * kUnit;
+        position.setX(qRound(position.x() / step) * step);
+        position.setY(qRound(position.y() / step) * step);
+        return position;
+    }
+
+    if (change == ItemPositionHasChanged) {
+        const int x = qRound(pos().x() / kUnit);
+        const int y = qRound(pos().y() / kUnit);
+        const int dx = x - m_object.x();
+        const int dy = y - m_object.y();
+        if ((dx || dy) && m_object.fields.size() >= m_object.pinFlagCount + cad::kTailFields) {
+            m_object.fields[m_object.pinFlagCount + 0].value = x;
+            m_object.fields[m_object.pinFlagCount + 1].value = y;
+            if (m_object.isLine() || m_object.isText()) {
+                m_object.fields[m_object.pinFlagCount + 2].value += dx;
+                m_object.fields[m_object.pinFlagCount + 3].value += dy;
+            }
+        }
+    }
+
+    return QGraphicsItem::itemChange(change, value);
 }
 
 void CadItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
