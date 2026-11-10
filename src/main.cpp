@@ -5,8 +5,10 @@
 #include <QTextStream>
 
 #include "cad/cadfile.h"
+#include "cad/palette.h"
 #include "ui/canvasview.h"
 #include "ui/mainwindow.h"
+#include "ui/sheet.h"
 
 namespace {
 
@@ -39,6 +41,22 @@ QString describeGeometry(const cad::Object& object)
         .arg(object.y())
         .arg(object.boxWidth())
         .arg(object.boxHeight());
+}
+
+void dumpPalette(const cad::Palette& palette)
+{
+    QTextStream out(stdout);
+    for (const cad::PaletteSection& section : palette.sections) {
+        out << section.number << ". " << section.title << " (" << section.items.size()
+            << ")\n";
+        for (const cad::PaletteItem& item : section.items) {
+            out << QStringLiteral("  %1  %2").arg(item.type, 6).arg(item.displayName());
+            if (!item.pins.isEmpty())
+                out << "  [" << item.pins.join(QLatin1Char(',')) << ']';
+            out << "  " << item.box.width() << 'x' << item.box.height() << '\n';
+        }
+    }
+    out.flush();
 }
 
 void dumpDocument(const cad::Document& document)
@@ -83,7 +101,9 @@ int main(int argc, char* argv[])
     bool cliMode = false;
     for (int i = 1; i < argc; ++i) {
         const QString argument = QString::fromLocal8Bit(argv[i]);
-        if (argument == QLatin1String("--dump") || argument == QLatin1String("--render"))
+        if (argument == QLatin1String("--dump") || argument == QLatin1String("--render")
+            || argument == QLatin1String("--palette")
+            || argument == QLatin1String("--palette-sheet"))
             cliMode = true;
     }
 
@@ -111,8 +131,17 @@ int main(int argc, char* argv[])
         QStringLiteral("render"),
         QStringLiteral("Render the file to a PNG image."),
         QStringLiteral("output.png"));
+    QCommandLineOption paletteOption(
+        QStringLiteral("palette"),
+        QStringLiteral("Print the symbol palette catalogue."));
+    QCommandLineOption paletteSheetOption(
+        QStringLiteral("palette-sheet"),
+        QStringLiteral("Render one symbol proof sheet per palette section."),
+        QStringLiteral("directory"));
     parser.addOption(dumpOption);
     parser.addOption(renderOption);
+    parser.addOption(paletteOption);
+    parser.addOption(paletteSheetOption);
     parser.addPositionalArgument(QStringLiteral("file"),
                                  QStringLiteral("A .cad document to open."));
 
@@ -121,6 +150,24 @@ int main(int argc, char* argv[])
     const bool dump = parser.isSet(dumpOption);
     const bool render = parser.isSet(renderOption);
     const QStringList positional = parser.positionalArguments();
+
+    if (parser.isSet(paletteOption)) {
+        dumpPalette(cad::Palette::loadDefault());
+        return 0;
+    }
+
+    if (parser.isSet(paletteSheetOption)) {
+        QString error;
+        if (!ui::renderPaletteSheet(cad::Palette::loadDefault(),
+                                    parser.value(paletteSheetOption), &error)) {
+            writeError(error);
+            return 1;
+        }
+        QTextStream(stdout) << "wrote palette sheets to "
+                            << QFileInfo(parser.value(paletteSheetOption)).absoluteFilePath()
+                            << Qt::endl;
+        return 0;
+    }
 
     if (dump && render) {
         writeError(QStringLiteral("--dump and --render cannot be used together"));

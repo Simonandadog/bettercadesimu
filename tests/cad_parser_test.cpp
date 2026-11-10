@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "cad/cadfile.h"
+#include "cad/palette.h"
 
 namespace {
 
@@ -170,6 +171,52 @@ void testMetadata()
     CHECK(!parsed.metadata.isEmpty());
 }
 
+void testPalette()
+{
+    const QByteArray json = QByteArrayLiteral(R"({
+        "version": 1,
+        "unitScale": 4.0,
+        "sections": [
+            {"number": 2, "title": "Fuses", "source": "section 2.cad",
+             "items": [
+                {"type": 5000, "name": "Fuse I", "label": "-F", "pins": ["1", "2"],
+                 "origin": [15, 6], "box": [6, 15]},
+                {"type": 5001, "name": "", "label": "-F", "pins": [],
+                 "origin": [36, 6], "box": [12, 15]}
+             ]}
+        ]
+    })");
+
+    QString error;
+    const cad::Palette palette = cad::Palette::parse(json, &error);
+    CHECK(error.isEmpty());
+    CHECK(palette.sections.size() == 1);
+    CHECK(palette.itemCount() == 2);
+    CHECK(palette.namedCount() == 1);
+
+    const cad::PaletteItem* item = palette.find(5000);
+    CHECK(item != nullptr);
+    if (item) {
+        CHECK(item->displayName() == QStringLiteral("Fuse I"));
+        CHECK(item->box == QSize(6, 15));
+        const cad::Object object = item->makeObject();
+        CHECK(object.type == 5000);
+        CHECK(object.boxWidth() == 6);
+        CHECK(object.boxHeight() == 15);
+        CHECK(object.pins == QStringList({QStringLiteral("1"), QStringLiteral("2")}));
+    }
+
+    const cad::PaletteItem* unnamed = palette.find(5001);
+    CHECK(unnamed != nullptr);
+    if (unnamed)
+        CHECK(unnamed->displayName() == QStringLiteral("Type 5001"));
+
+    CHECK(palette.find(9999) == nullptr);
+
+    const cad::Palette broken = cad::Palette::parse(QByteArrayLiteral("{"));
+    CHECK(broken.sections.isEmpty());
+}
+
 void testFixture()
 {
     const QString fixture = qEnvironmentVariable("BETTERCADESIMU_FIXTURE");
@@ -201,6 +248,7 @@ int main()
     testMissingHeader();
     testTrailingTokens();
     testMetadata();
+    testPalette();
     testFixture();
 
     if (g_failures == 0) {

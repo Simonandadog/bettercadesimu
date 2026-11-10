@@ -20,8 +20,13 @@ Early work in progress. This milestone (M0) is a **read-only viewer**:
 - `.cad` parser that replays the append-only record log by object ID.
 - Pan / zoom / fit-to-window canvas with a snap-style grid.
 - Rubber-band selection in every direction, plus hover highlight.
-- Inspector dock showing the raw type field and all 23 numeric fields.
-- CLI modes for dumping a parsed document and rendering it to PNG.
+- Inspector dock showing the raw type field and every numeric field.
+- Symbol palette dock generated from the surveyed catalogue (18 sections,
+  243 entries), with painted previews.
+- IEC symbol painters for power feeds, fuses, breakers, contactors, motors,
+  drives, contacts, push buttons, coils and timers.
+- CLI modes for dumping a parsed document, rendering it to PNG, printing the
+  palette, and rendering per-section artwork proof sheets.
 - Drag-and-drop and recent-files support.
 
 Editing, simulation, and a native JSON project format come next.
@@ -67,6 +72,19 @@ Render a PNG (works headlessly; forces the offscreen Qt platform):
 ./build/bettercadesimu --render out.png "path/to/schematic"
 ```
 
+Print the symbol palette catalogue:
+
+```sh
+./build/bettercadesimu --palette
+```
+
+Render one artwork proof sheet per palette section, for reviewing the symbols
+against the reference screenshots:
+
+```sh
+./build/bettercadesimu --palette-sheet build/palette-sheets
+```
+
 ## Tests
 
 ```sh
@@ -87,19 +105,24 @@ A `.cad` file is Latin-1-ish plain text:
 CADe_SIMU*<record>*<record>*...$$$<metadata>
 ```
 
-Each record has exactly 25 `*`-separated tokens:
+Each record is `id`, then a type field, then `max(8, pinCount)` pin-flag fields,
+then a fixed 15-field tail (23 fields in total for most symbols):
 
 | Tokens | Meaning |
 | --- | --- |
 | 0 | object ID |
 | 1 | type field: `type#label#sublabel#pin#pin#...` |
-| 2–24 | 23 numeric fields, optionally followed by `#text` |
+| 2 … 2+max(8, pins)-1 | pin flags |
+| … | 15-field tail: geometry, box, inline text |
 
-Records form an append-only change log: a later record with the same ID overrides the
-earlier one, so the last definition wins. Geometry lives in fields 8–11:
+The pin-flag count is `type field parts - 3`, so nine-pin symbols carry one extra
+field and shift the tail by one. Records form an append-only change log: a later
+record with the same ID overrides the earlier one, so the last definition wins.
+Geometry lives in the first four tail fields:
 
 - Lines and wires use them as `x1, y1, x2, y2`.
-- Components use fields 8–9 as the insertion point and 12–15 as a local bounding box.
+- Components use the first two as the insertion point and fields 4–7 of the tail as
+  a local bounding box.
 - Text uses them as a text box.
 
 Coordinates are rendered at 4 px per file unit, which matches the dimensions of PNGs

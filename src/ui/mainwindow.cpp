@@ -18,9 +18,11 @@
 #include <QPlainTextEdit>
 #include <QSettings>
 #include <QStatusBar>
+#include <QTreeWidget>
 #include <QUrl>
 
 #include "ui/canvasview.h"
+#include "ui/sheet.h"
 
 namespace ui {
 namespace {
@@ -40,8 +42,11 @@ MainWindow::MainWindow(QWidget* parent)
     m_view = new CanvasView(this);
     setCentralWidget(m_view);
 
+    m_palette = cad::Palette::loadDefault();
+
     createMenus();
     createDock();
+    createPaletteDock();
     createStatusBar();
 
     connect(m_view, &CanvasView::cursorMoved, this, &MainWindow::updateCursorPosition);
@@ -122,6 +127,74 @@ void MainWindow::createDock()
 
     dock->setWidget(m_inspector);
     addDockWidget(Qt::RightDockWidgetArea, dock);
+}
+
+void MainWindow::createPaletteDock()
+{
+    auto* dock = new QDockWidget(tr("Symbols"), this);
+    dock->setObjectName(QStringLiteral("paletteDock"));
+    dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
+    m_paletteTree = new QTreeWidget(dock);
+    m_paletteTree->setHeaderHidden(true);
+    m_paletteTree->setIconSize(QSize(44, 44));
+    m_paletteTree->setUniformRowHeights(true);
+    m_paletteTree->setIndentation(14);
+    m_paletteTree->setMinimumWidth(250);
+
+    for (const cad::PaletteSection& section : m_palette.sections) {
+        auto* sectionItem = new QTreeWidgetItem(m_paletteTree);
+        sectionItem->setText(0, QStringLiteral("%1. %2").arg(section.number).arg(section.title));
+        QFont font = sectionItem->font(0);
+        font.setBold(true);
+        sectionItem->setFont(0, font);
+        sectionItem->setFirstColumnSpanned(true);
+
+        for (const cad::PaletteItem& entry : section.items) {
+            auto* item = new QTreeWidgetItem(sectionItem);
+            item->setText(0, entry.displayName());
+            item->setIcon(0, QIcon(symbolPreview(entry, QSize(44, 44))));
+            item->setData(0, Qt::UserRole, entry.type);
+
+            QStringList tooltip;
+            tooltip << entry.displayName() << tr("type %1").arg(entry.type);
+            if (!entry.pins.isEmpty())
+                tooltip << tr("pins %1").arg(entry.pins.join(QLatin1Char(',')));
+            tooltip << tr("%1 x %2 units").arg(entry.box.width()).arg(entry.box.height());
+            item->setToolTip(0, tooltip.join(QLatin1Char('\n')));
+        }
+    }
+
+    m_paletteTree->expandToDepth(0);
+    connect(m_paletteTree, &QTreeWidget::itemClicked, this, &MainWindow::showPaletteItem);
+
+    dock->setWidget(m_paletteTree);
+    addDockWidget(Qt::LeftDockWidgetArea, dock);
+}
+
+void MainWindow::showPaletteItem(QTreeWidgetItem* item, int column)
+{
+    Q_UNUSED(column)
+    if (!item || item->data(0, Qt::UserRole).isNull())
+        return;
+
+    const int type = item->data(0, Qt::UserRole).toInt();
+    const cad::PaletteItem* entry = m_palette.find(type);
+    if (!entry)
+        return;
+
+    QStringList lines;
+    lines << entry->displayName();
+    lines << QString();
+    lines << tr("type:  %1").arg(entry->type);
+    if (!entry->pins.isEmpty())
+        lines << tr("pins:  %1").arg(entry->pins.join(QLatin1Char(' ')));
+    lines << tr("box:   %1 x %2 units").arg(entry->box.width()).arg(entry->box.height());
+    lines << QString();
+    lines << tr("Placing symbols is not implemented yet.");
+
+    m_inspector->setPlainText(lines.join(QLatin1Char('\n')));
+    statusBar()->showMessage(tr("%1 (type %2)").arg(entry->displayName()).arg(entry->type), 3000);
 }
 
 void MainWindow::createStatusBar()

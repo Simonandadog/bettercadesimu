@@ -19,6 +19,8 @@ qt_standard_project_setup()
 add_library(cadcore STATIC
     src/cad/cadfile.cpp
     src/cad/cadfile.h
+    src/cad/palette.cpp
+    src/cad/palette.h
 )
 target_link_libraries(cadcore PUBLIC Qt6::Core)
 target_include_directories(cadcore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -31,10 +33,18 @@ qt_add_executable(bettercadesimu
     src/ui/canvasview.h
     src/ui/mainwindow.cpp
     src/ui/mainwindow.h
+    src/ui/sheet.cpp
+    src/ui/sheet.h
     src/ui/symbols.cpp
     src/ui/symbols.h
 )
 target_link_libraries(bettercadesimu PRIVATE cadcore Qt6::Widgets)
+
+qt_add_resources(bettercadesimu "palette"
+    PREFIX "/"
+    BASE data
+    FILES data/palette.json
+)
 
 install(TARGETS bettercadesimu RUNTIME DESTINATION bin)
 

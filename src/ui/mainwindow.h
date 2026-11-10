@@ -6,6 +6,7 @@
 #include <QStringList>
 
 #include "cad/cadfile.h"
+#include "cad/palette.h"
 
 class QAction;
 class QCloseEvent;
@@ -14,6 +15,8 @@ class QDropEvent;
 class QLabel;
 class QMenu;
 class QPlainTextEdit;
+class QTreeWidget;
+class QTreeWidgetItem;
 
 namespace ui {
 
@@ -40,10 +43,12 @@ private slots:
     void showAbout();
     void updateCursorPosition(const QPointF& filePosition);
     void updateInspector(const cad::Object* object);
+    void showPaletteItem(QTreeWidgetItem* item, int column);
 
 private:
     void createMenus();
     void createDock();
+    void createPaletteDock();
     void createStatusBar();
     void updateWindowTitle();
     void readSettings();
@@ -55,10 +60,12 @@ private:
     QLabel* m_positionLabel = nullptr;
     QLabel* m_documentLabel = nullptr;
     QPlainTextEdit* m_inspector = nullptr;
+    QTreeWidget* m_paletteTree = nullptr;
     QMenu* m_recentMenu = nullptr;
     QAction* m_gridAction = nullptr;
 
     cad::Document m_document;
+    cad::Palette m_palette;
     QString m_currentPath;
     QStringList m_recentFiles;
 };

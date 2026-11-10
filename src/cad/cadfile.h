@@ -40,6 +40,8 @@ struct Object {
     int y() const { return tail(1).value; }
     int x2() const { return tail(2).value; }
     int y2() const { return tail(3).value; }
+    int boxLeft() const { return tail(4).value; }
+    int boxTop() const { return tail(5).value; }
     int boxWidth() const { return tail(6).value; }
     int boxHeight() const { return tail(7).value; }
 
