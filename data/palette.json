@@ -1,0 +1,4441 @@
+{
+  "version": 1,
+  "unitScale": 4.0,
+  "sections": [
+    {
+      "number": 1,
+      "title": "Power feedings",
+      "source": "section 1.cad",
+      "items": [
+        {
+          "type": 3000,
+          "name": "Phase power",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            9,
+            9
+          ],
+          "box": [
+            6,
+            3
+          ]
+        },
+        {
+          "type": 3001,
+          "name": "Power Neutro",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            27,
+            9
+          ],
+          "box": [
+            6,
+            3
+          ]
+        },
+        {
+          "type": 3002,
+          "name": "Power Protection",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            45,
+            9
+          ],
+          "box": [
+            6,
+            3
+          ]
+        },
+        {
+          "type": 3003,
+          "name": "Power F+N",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            66,
+            9
+          ],
+          "box": [
+            12,
+            3
+          ]
+        },
+        {
+          "type": 3011,
+          "name": "Power F+N+PE",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            96,
+            9
+          ],
+          "box": [
+            18,
+            3
+          ]
+        },
+        {
+          "type": 3004,
+          "name": "Power L1+L2+L3",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            129,
+            9
+          ],
+          "box": [
+            18,
+            3
+          ]
+        },
+        {
+          "type": 3005,
+          "name": "Power L1+L2+L3+PE",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            162,
+            9
+          ],
+          "box": [
+            24,
+            3
+          ]
+        },
+        {
+          "type": 3006,
+          "name": "Power L1+L2+L3+N",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            201,
+            9
+          ],
+          "box": [
+            24,
+            3
+          ]
+        },
+        {
+          "type": 3007,
+          "name": "Power L1+L2+L3+N+PE",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            237,
+            9
+          ],
+          "box": [
+            30,
+            3
+          ]
+        },
+        {
+          "type": 3008,
+          "name": "Positive power",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            279,
+            9
+          ],
+          "box": [
+            6,
+            3
+          ]
+        },
+        {
+          "type": 3009,
+          "name": "Negative power",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            297,
+            9
+          ],
+          "box": [
+            6,
+            3
+          ]
+        },
+        {
+          "type": 3010,
+          "name": "Power +-",
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            312,
+            9
+          ],
+          "box": [
+            12,
+            3
+          ]
+        },
+        {
+          "type": 3015,
+          "name": "Power Protection",
+          "label": "",
+          "pins": [],
+          "origin": [
+            327,
+            3
+          ],
+          "box": [
+            8,
+            8
+          ]
+        },
+        {
+          "type": 3012,
+          "name": "Transformer",
+          "label": "-T",
+          "pins": [
+            "1",
+            "2",
+            "3",
+            "4"
+          ],
+          "origin": [
+            351,
+            3
+          ],
+          "box": [
+            15,
+            18
+          ]
+        },
+        {
+          "type": 3017,
+          "name": "Transformer III",
+          "label": "-T",
+          "pins": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+          ],
+          "origin": [
+            378,
+            3
+          ],
+          "box": [
+            18,
+            18
+          ]
+        },
+        {
+          "type": 3016,
+          "name": "Diode",
+          "label": "-D",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            408,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 3013,
+          "name": "Rectifier",
+          "label": "-V",
+          "pins": [
+            "1",
+            "2",
+            "3",
+            "4"
+          ],
+          "origin": [
+            435,
+            3
+          ],
+          "box": [
+            15,
+            21
+          ]
+        },
+        {
+          "type": 3014,
+          "name": "Power supply",
+          "label": "-V",
+          "pins": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "PE"
+          ],
+          "origin": [
+            6,
+            21
+          ],
+          "box": [
+            15,
+            21
+          ]
+        },
+        {
+          "type": 3018,
+          "name": "Power supply III",
+          "label": "-V",
+          "pins": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "PE"
+          ],
+          "origin": [
+            42,
+            24
+          ],
+          "box": [
+            21,
+            21
+          ]
+        },
+        {
+          "type": 3019,
+          "name": "Battery",
+          "label": "-V",
+          "pins": [
+            "+",
+            "-"
+          ],
+          "origin": [
+            78,
+            30
+          ],
+          "box": [
+            9,
+            12
+          ]
+        },
+        {
+          "type": 3020,
+          "name": "Eletrical outlet",
+          "label": "-TC",
+          "pins": [],
+          "origin": [
+            99,
+            30
+          ],
+          "box": [
+            9,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "title": "Fuses, Disconnects",
+      "source": "section 2.cad",
+      "items": [
+        {
+          "type": 5000,
+          "name": "Fuse I",
+          "label": "-F",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            15,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 5001,
+          "name": "Fuse IN",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "2",
+            "4"
+          ],
+          "origin": [
+            36,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 5002,
+          "name": "Fuse II",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "2",
+            "4"
+          ],
+          "origin": [
+            66,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 5003,
+          "name": "Fuse III",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6"
+          ],
+          "origin": [
+            99,
+            6
+          ],
+          "box": [
+            18,
+            15
+          ]
+        },
+        {
+          "type": 5004,
+          "name": "Fuse IIIN",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "7",
+            "2",
+            "4",
+            "6",
+            "8"
+          ],
+          "origin": [
+            147,
+            6
+          ],
+          "box": [
+            24,
+            15
+          ]
+        },
+        {
+          "type": 5005,
+          "name": "Fuse disconnector I",
+          "label": "-F",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            195,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 5006,
+          "name": "Fuse disconnector IN",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "2",
+            "4"
+          ],
+          "origin": [
+            219,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 5007,
+          "name": "Fuse disconnector II",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "2",
+            "4"
+          ],
+          "origin": [
+            249,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 5008,
+          "name": "Fuse disconnector III",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6"
+          ],
+          "origin": [
+            273,
+            6
+          ],
+          "box": [
+            18,
+            15
+          ]
+        },
+        {
+          "type": 5009,
+          "name": "Fuse disconnector IIIN",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "7",
+            "2",
+            "4",
+            "6",
+            "8"
+          ],
+          "origin": [
+            306,
+            6
+          ],
+          "box": [
+            24,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "title": "Automatic, Magnetothermic",
+      "source": "section3.cad",
+      "items": [
+        {
+          "type": 6000,
+          "name": "Automatic switch I",
+          "label": "-F",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            6,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 6001,
+          "name": "Automatic switch IN",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "2",
+            "4"
+          ],
+          "origin": [
+            24,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 6002,
+          "name": "Automatic switch II",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "2",
+            "4"
+          ],
+          "origin": [
+            51,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 6003,
+          "name": "Automatic switch III",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6"
+          ],
+          "origin": [
+            78,
+            6
+          ],
+          "box": [
+            17,
+            15
+          ]
+        },
+        {
+          "type": 6004,
+          "name": "Automatic switch IIIN",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "7",
+            "2",
+            "4",
+            "6",
+            "8"
+          ],
+          "origin": [
+            105,
+            6
+          ],
+          "box": [
+            24,
+            15
+          ]
+        },
+        {
+          "type": 6005,
+          "name": "Differential switch IN",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "2",
+            "4"
+          ],
+          "origin": [
+            150,
+            3
+          ],
+          "box": [
+            12,
+            21
+          ]
+        },
+        {
+          "type": 6006,
+          "name": "Differential switch IIIN",
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "7",
+            "2",
+            "4",
+            "6",
+            "8"
+          ],
+          "origin": [
+            189,
+            3
+          ],
+          "box": [
+            24,
+            21
+          ]
+        },
+        {
+          "type": 6007,
+          "name": null,
+          "label": "-F",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6"
+          ],
+          "origin": [
+            240,
+            6
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 6010,
+          "name": "Magnetothermic switch I",
+          "label": "-Q",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            279,
+            3
+          ],
+          "box": [
+            6,
+            24
+          ]
+        },
+        {
+          "type": 6011,
+          "name": "Magnetothermic switch IN",
+          "label": "-Q",
+          "pins": [
+            "1",
+            "3",
+            "2",
+            "4"
+          ],
+          "origin": [
+            303,
+            3
+          ],
+          "box": [
+            12,
+            24
+          ]
+        },
+        {
+          "type": 6008,
+          "name": "Magnetothermic switch II",
+          "label": "-Q",
+          "pins": [
+            "1",
+            "3",
+            "2",
+            "4"
+          ],
+          "origin": [
+            18,
+            30
+          ],
+          "box": [
+            12,
+            24
+          ]
+        },
+        {
+          "type": 6009,
+          "name": "Magnetothermic switch III",
+          "label": "-Q",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6"
+          ],
+          "origin": [
+            54,
+            30
+          ],
+          "box": [
+            17,
+            24
+          ]
+        },
+        {
+          "type": 6012,
+          "name": "Magnetothermic switch IIIN",
+          "label": "-Q",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "7",
+            "2",
+            "4",
+            "6",
+            "8"
+          ],
+          "origin": [
+            99,
+            30
+          ],
+          "box": [
+            24,
+            24
+          ]
+        },
+        {
+          "type": 6013,
+          "name": "Overvoltage limiter IN",
+          "label": "-F",
+          "pins": [
+            "1",
+            "2",
+            "3"
+          ],
+          "origin": [
+            147,
+            33
+          ],
+          "box": [
+            12,
+            21
+          ]
+        },
+        {
+          "type": 6014,
+          "name": "Overvoltage limiter IIIN",
+          "label": "-F",
+          "pins": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "origin": [
+            177,
+            33
+          ],
+          "box": [
+            24,
+            21
+          ]
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "title": "Contactors Switches",
+      "source": "section4.cad",
+      "items": [
+        {
+          "type": 2006,
+          "name": "Contactor I",
+          "label": "-KM",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            12,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 2000,
+          "name": "Contactor II",
+          "label": "-KM",
+          "pins": [
+            "1",
+            "3",
+            "2",
+            "4"
+          ],
+          "origin": [
+            33,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 2001,
+          "name": "Contactor III",
+          "label": "-KM",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6"
+          ],
+          "origin": [
+            60,
+            6
+          ],
+          "box": [
+            17,
+            15
+          ]
+        },
+        {
+          "type": 2002,
+          "name": "Contactor IIII",
+          "label": "-KM",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "7",
+            "2",
+            "4",
+            "6",
+            "8"
+          ],
+          "origin": [
+            96,
+            6
+          ],
+          "box": [
+            24,
+            15
+          ]
+        },
+        {
+          "type": 2008,
+          "name": "Contactor III (alternate)",
+          "label": "-KM",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6"
+          ],
+          "origin": [
+            135,
+            6
+          ],
+          "box": [
+            17,
+            15
+          ]
+        },
+        {
+          "type": 2007,
+          "name": "Switch I",
+          "label": "-S",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            177,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 2003,
+          "name": "Switch II",
+          "label": "-S",
+          "pins": [
+            "1",
+            "3",
+            "2",
+            "4"
+          ],
+          "origin": [
+            201,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 2004,
+          "name": "Switch III",
+          "label": "-S",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6"
+          ],
+          "origin": [
+            228,
+            6
+          ],
+          "box": [
+            17,
+            15
+          ]
+        },
+        {
+          "type": 2005,
+          "name": "Switch IIII",
+          "label": "-S",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "7",
+            "2",
+            "4",
+            "6",
+            "8"
+          ],
+          "origin": [
+            261,
+            6
+          ],
+          "box": [
+            24,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "title": "Motors",
+      "source": "section5.cad",
+      "items": [
+        {
+          "type": 1000,
+          "name": "Three-phase motor",
+          "label": "-M",
+          "pins": [
+            "U1",
+            "V1",
+            "W1",
+            "PE"
+          ],
+          "origin": [
+            6,
+            6
+          ],
+          "box": [
+            24,
+            24
+          ]
+        },
+        {
+          "type": 1001,
+          "name": "Three-phase motor YD",
+          "label": "-M",
+          "pins": [
+            "U1",
+            "V1",
+            "W1",
+            "PE",
+            "W2",
+            "U2",
+            "V2"
+          ],
+          "origin": [
+            42,
+            6
+          ],
+          "box": [
+            24,
+            27
+          ]
+        },
+        {
+          "type": 1002,
+          "name": "Single-phase motor",
+          "label": "-M",
+          "pins": [
+            "U1",
+            "V1",
+            "PE"
+          ],
+          "origin": [
+            81,
+            9
+          ],
+          "box": [
+            24,
+            24
+          ]
+        },
+        {
+          "type": 1008,
+          "name": "Single-phase motor (capacitor)",
+          "label": "-M",
+          "pins": [
+            "U1",
+            "V1",
+            "PE",
+            "U2",
+            "V2"
+          ],
+          "origin": [
+            120,
+            9
+          ],
+          "box": [
+            24,
+            30
+          ]
+        },
+        {
+          "type": 1010,
+          "name": "",
+          "label": "-M",
+          "pins": [
+            "U1",
+            "V1",
+            "W1",
+            "PE"
+          ],
+          "origin": [
+            156,
+            12
+          ],
+          "box": [
+            24,
+            30
+          ]
+        },
+        {
+          "type": 1003,
+          "name": "Motor Dahlander",
+          "label": "-M",
+          "pins": [
+            "U1",
+            "V1",
+            "W1",
+            "PE",
+            "U2",
+            "V2",
+            "W2"
+          ],
+          "origin": [
+            234,
+            15
+          ],
+          "box": [
+            24,
+            27
+          ]
+        },
+        {
+          "type": 1005,
+          "name": "Two speed motor",
+          "label": "-M",
+          "pins": [
+            "U1",
+            "V1",
+            "W1",
+            "PE",
+            "U2",
+            "V2",
+            "W2"
+          ],
+          "origin": [
+            282,
+            18
+          ],
+          "box": [
+            24,
+            27
+          ]
+        },
+        {
+          "type": 1004,
+          "name": "Wound rotor induction motor",
+          "label": "-M",
+          "pins": [
+            "U1",
+            "V1",
+            "W1",
+            "PE",
+            "K",
+            "L",
+            "M"
+          ],
+          "origin": [
+            318,
+            18
+          ],
+          "box": [
+            24,
+            27
+          ]
+        },
+        {
+          "type": 1006,
+          "name": "DC motor, permanent magnet",
+          "label": "-M",
+          "pins": [
+            "A1",
+            "A2",
+            "PE"
+          ],
+          "origin": [
+            33,
+            60
+          ],
+          "box": [
+            24,
+            15
+          ]
+        },
+        {
+          "type": 1007,
+          "name": "DC motor, independent field",
+          "label": "-M",
+          "pins": [
+            "A1",
+            "A2",
+            "PE",
+            "F1",
+            "F2"
+          ],
+          "origin": [
+            69,
+            60
+          ],
+          "box": [
+            24,
+            15
+          ]
+        },
+        {
+          "type": 1009,
+          "name": "Brake",
+          "label": "-Fr",
+          "pins": [
+            "U1",
+            "V1",
+            "PE"
+          ],
+          "origin": [
+            117,
+            57
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10550,
+          "name": "Electric linear actuator",
+          "label": "-M",
+          "pins": [
+            "50",
+            "50",
+            "-FC2",
+            "-FC1",
+            "000.025.050.075.100.-G   .0.-M   .0",
+            "-MD"
+          ],
+          "origin": [
+            159,
+            60
+          ],
+          "box": [
+            136,
+            30
+          ]
+        }
+      ]
+    },
+    {
+      "number": 6,
+      "title": "Power",
+      "source": "section6.cad",
+      "items": [
+        {
+          "type": 1050,
+          "name": "Resistance I",
+          "label": "-R",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            12,
+            30
+          ],
+          "box": [
+            6,
+            18
+          ]
+        },
+        {
+          "type": 1051,
+          "name": "Resistance II",
+          "label": "-R",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6"
+          ],
+          "origin": [
+            27,
+            33
+          ],
+          "box": [
+            18,
+            18
+          ]
+        },
+        {
+          "type": 1052,
+          "name": "Resistance III",
+          "label": "-T",
+          "pins": [
+            "1",
+            "4",
+            "7",
+            "2",
+            "5",
+            "8",
+            "3",
+            "6",
+            "9"
+          ],
+          "origin": [
+            54,
+            33
+          ],
+          "box": [
+            18,
+            21
+          ]
+        },
+        {
+          "type": 1053,
+          "name": "Electronic starter a.c.",
+          "label": "-G",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6",
+            "PE"
+          ],
+          "origin": [
+            90,
+            30
+          ],
+          "box": [
+            21,
+            27
+          ]
+        },
+        {
+          "type": 1062,
+          "name": "Electronic starter control a.c.",
+          "label": "-G",
+          "pins": [
+            "IN",
+            "A1",
+            "A2"
+          ],
+          "origin": [
+            123,
+            30
+          ],
+          "box": [
+            15,
+            27
+          ]
+        },
+        {
+          "type": 1054,
+          "name": "Variable speed a.c. II",
+          "label": "-G",
+          "pins": [
+            "L1",
+            "N",
+            "PE",
+            "U",
+            "V",
+            "W",
+            "PE"
+          ],
+          "origin": [
+            153,
+            30
+          ],
+          "box": [
+            24,
+            33
+          ]
+        },
+        {
+          "type": 1055,
+          "name": "Variable speed a.c. III",
+          "label": "-G",
+          "pins": [
+            "L1",
+            "L2",
+            "L3",
+            "PE",
+            "U",
+            "V",
+            "W",
+            "PE"
+          ],
+          "origin": [
+            189,
+            30
+          ],
+          "box": [
+            24,
+            33
+          ]
+        },
+        {
+          "type": 1056,
+          "name": "Drive speed control a.c.",
+          "label": "-G",
+          "pins": [
+            "RA",
+            "RC",
+            "I1",
+            "I2",
+            "I3",
+            "I4",
+            "+"
+          ],
+          "origin": [
+            228,
+            33
+          ],
+          "box": [
+            54,
+            33
+          ]
+        },
+        {
+          "type": 1057,
+          "name": "Variable speed d.c. II",
+          "label": "-G",
+          "pins": [
+            "L1",
+            "N",
+            "PE",
+            "M1",
+            "M2"
+          ],
+          "origin": [
+            12,
+            54
+          ],
+          "box": [
+            18,
+            33
+          ]
+        },
+        {
+          "type": 1058,
+          "name": "Variable speed d.c. II (alternate)",
+          "label": "-G",
+          "pins": [
+            "L1",
+            "N",
+            "PE",
+            "M1",
+            "M2",
+            "F1",
+            "F2"
+          ],
+          "origin": [
+            45,
+            60
+          ],
+          "box": [
+            24,
+            33
+          ]
+        },
+        {
+          "type": 1059,
+          "name": "Variable speed d.c. III",
+          "label": "-G",
+          "pins": [
+            "L1",
+            "L2",
+            "L3",
+            "PE",
+            "M1",
+            "M2"
+          ],
+          "origin": [
+            84,
+            66
+          ],
+          "box": [
+            24,
+            33
+          ]
+        },
+        {
+          "type": 1060,
+          "name": "Variable speed d.c. III (alternate)",
+          "label": "-G",
+          "pins": [
+            "L1",
+            "L2",
+            "L3",
+            "PE",
+            "M1",
+            "M2",
+            "F1",
+            "F2"
+          ],
+          "origin": [
+            123,
+            72
+          ],
+          "box": [
+            24,
+            33
+          ]
+        },
+        {
+          "type": 1061,
+          "name": "Drive speed control d.c.",
+          "label": "-G",
+          "pins": [
+            "RA",
+            "RC",
+            "IN",
+            "V+",
+            "+",
+            "AI",
+            "0V"
+          ],
+          "origin": [
+            162,
+            75
+          ],
+          "box": [
+            39,
+            33
+          ]
+        }
+      ]
+    },
+    {
+      "number": 7,
+      "title": "Section 7",
+      "source": "section7.cad",
+      "items": [
+        {
+          "type": 7000,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "13",
+            "14"
+          ],
+          "origin": [
+            9,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 7001,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "11",
+            "12"
+          ],
+          "origin": [
+            27,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 7002,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "11",
+            "13",
+            "12",
+            "14"
+          ],
+          "origin": [
+            45,
+            6
+          ],
+          "box": [
+            15,
+            15
+          ]
+        },
+        {
+          "type": 7003,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "11",
+            "12",
+            "14"
+          ],
+          "origin": [
+            75,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 7004,
+          "name": null,
+          "label": "-KA",
+          "pins": [
+            "67",
+            "68"
+          ],
+          "origin": [
+            102,
+            3
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 7005,
+          "name": null,
+          "label": "-KA",
+          "pins": [
+            "55",
+            "56"
+          ],
+          "origin": [
+            123,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 7006,
+          "name": null,
+          "label": "-KA",
+          "pins": [
+            "55",
+            "57",
+            "56",
+            "58"
+          ],
+          "origin": [
+            147,
+            6
+          ],
+          "box": [
+            15,
+            15
+          ]
+        },
+        {
+          "type": 7007,
+          "name": null,
+          "label": "-KA",
+          "pins": [
+            "55",
+            "56",
+            "58"
+          ],
+          "origin": [
+            180,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 7008,
+          "name": null,
+          "label": "-KA",
+          "pins": [
+            "67",
+            "68"
+          ],
+          "origin": [
+            210,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 7009,
+          "name": null,
+          "label": "-KA",
+          "pins": [
+            "55",
+            "56"
+          ],
+          "origin": [
+            234,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 7011,
+          "name": null,
+          "label": "-KA",
+          "pins": [
+            "55",
+            "56",
+            "58"
+          ],
+          "origin": [
+            252,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 7012,
+          "name": null,
+          "label": "-KA",
+          "pins": [
+            "67",
+            "68"
+          ],
+          "origin": [
+            18,
+            30
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 7013,
+          "name": null,
+          "label": "-KA",
+          "pins": [
+            "55",
+            "56"
+          ],
+          "origin": [
+            42,
+            30
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 7014,
+          "name": null,
+          "label": "-KA",
+          "pins": [
+            "55",
+            "57",
+            "56",
+            "58"
+          ],
+          "origin": [
+            66,
+            33
+          ],
+          "box": [
+            15,
+            15
+          ]
+        },
+        {
+          "type": 7015,
+          "name": null,
+          "label": "-KA",
+          "pins": [
+            "55",
+            "56",
+            "58"
+          ],
+          "origin": [
+            99,
+            30
+          ],
+          "box": [
+            12,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "number": 8,
+      "title": "Section 8",
+      "source": "section8.cad",
+      "items": [
+        {
+          "type": 8023,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "0"
+          ],
+          "origin": [
+            12,
+            12
+          ],
+          "box": [
+            6,
+            6
+          ]
+        },
+        {
+          "type": 8000,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "13",
+            "14"
+          ],
+          "origin": [
+            36,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 8001,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "12"
+          ],
+          "origin": [
+            57,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 8002,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "13",
+            "12",
+            "14"
+          ],
+          "origin": [
+            75,
+            6
+          ],
+          "box": [
+            15,
+            15
+          ]
+        },
+        {
+          "type": 8003,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "12",
+            "14"
+          ],
+          "origin": [
+            105,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 8004,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "13",
+            "14"
+          ],
+          "origin": [
+            132,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 8005,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "12"
+          ],
+          "origin": [
+            153,
+            6
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 8006,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "13",
+            "12",
+            "14"
+          ],
+          "origin": [
+            174,
+            6
+          ],
+          "box": [
+            15,
+            15
+          ]
+        },
+        {
+          "type": 8007,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "12",
+            "14"
+          ],
+          "origin": [
+            204,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 8008,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "13",
+            "14"
+          ],
+          "origin": [
+            18,
+            33
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 8009,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "12"
+          ],
+          "origin": [
+            39,
+            33
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 8010,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "13",
+            "12",
+            "14"
+          ],
+          "origin": [
+            60,
+            33
+          ],
+          "box": [
+            15,
+            15
+          ]
+        },
+        {
+          "type": 8011,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "12",
+            "14"
+          ],
+          "origin": [
+            93,
+            33
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 8020,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "1",
+            "2",
+            "3"
+          ],
+          "origin": [
+            120,
+            33
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 8021,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "1",
+            "2",
+            "3",
+            "4"
+          ],
+          "origin": [
+            147,
+            33
+          ],
+          "box": [
+            18,
+            15
+          ]
+        },
+        {
+          "type": 8022,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "1",
+            "2",
+            "3",
+            "4"
+          ],
+          "origin": [
+            177,
+            33
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 8012,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "13",
+            "14"
+          ],
+          "origin": [
+            18,
+            54
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 8013,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "12"
+          ],
+          "origin": [
+            42,
+            54
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 8014,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "13",
+            "12",
+            "14"
+          ],
+          "origin": [
+            66,
+            54
+          ],
+          "box": [
+            15,
+            15
+          ]
+        },
+        {
+          "type": 8015,
+          "name": null,
+          "label": "-S",
+          "pins": [
+            "11",
+            "12",
+            "14"
+          ],
+          "origin": [
+            99,
+            54
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 8016,
+          "name": null,
+          "label": "-F",
+          "pins": [
+            "97",
+            "98"
+          ],
+          "origin": [
+            18,
+            78
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 8017,
+          "name": null,
+          "label": "-F",
+          "pins": [
+            "95",
+            "96"
+          ],
+          "origin": [
+            39,
+            78
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 8018,
+          "name": null,
+          "label": "-F",
+          "pins": [
+            "95",
+            "97",
+            "96",
+            "98"
+          ],
+          "origin": [
+            60,
+            78
+          ],
+          "box": [
+            15,
+            15
+          ]
+        },
+        {
+          "type": 8019,
+          "name": null,
+          "label": "-F",
+          "pins": [
+            "95",
+            "96",
+            "98"
+          ],
+          "origin": [
+            90,
+            78
+          ],
+          "box": [
+            12,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "number": 9,
+      "title": "Section 9",
+      "source": "section9.cad",
+      "items": [
+        {
+          "type": 7500,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            15,
+            9
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7520,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            42,
+            9
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7506,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            69,
+            9
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7526,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            96,
+            9
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7512,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            120,
+            9
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7532,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            147,
+            9
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7550,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "origin": [
+            12,
+            30
+          ],
+          "box": [
+            12,
+            21
+          ]
+        },
+        {
+          "type": 7551,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            42,
+            36
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7553,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            66,
+            36
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7559,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            87,
+            36
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7570,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            15,
+            60
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7582,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            36,
+            60
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7576,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            60,
+            60
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 7588,
+          "name": null,
+          "label": "-B",
+          "pins": [
+            "1",
+            "2"
+          ],
+          "origin": [
+            81,
+            60
+          ],
+          "box": [
+            9,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "number": 10,
+      "title": "Section 10",
+      "source": "section10.cad",
+      "items": [
+        {
+          "type": 9000,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "A1",
+            "A2"
+          ],
+          "origin": [
+            12,
+            6
+          ],
+          "box": [
+            9,
+            15
+          ]
+        },
+        {
+          "type": 9001,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "A1",
+            "B1",
+            "A2"
+          ],
+          "origin": [
+            27,
+            6
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9002,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "A1",
+            "A2"
+          ],
+          "origin": [
+            45,
+            6
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9003,
+          "name": null,
+          "label": "-EV  ",
+          "pins": [
+            "A1",
+            "A2"
+          ],
+          "origin": [
+            12,
+            27
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9004,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "A1",
+            "A2",
+            "0",
+            "1"
+          ],
+          "origin": [
+            12,
+            48
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9005,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "A1",
+            "A2",
+            "0",
+            "1"
+          ],
+          "origin": [
+            27,
+            48
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9006,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "A1",
+            "A2",
+            "0",
+            "1"
+          ],
+          "origin": [
+            45,
+            48
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9007,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "A1",
+            "A2",
+            "0",
+            "1"
+          ],
+          "origin": [
+            63,
+            48
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9015,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "A1",
+            "A2",
+            "0",
+            "1",
+            "0",
+            "1"
+          ],
+          "origin": [
+            81,
+            48
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9014,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "A1",
+            "A2",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "origin": [
+            117,
+            48
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9016,
+          "name": null,
+          "label": "-C",
+          "pins": [
+            "A1",
+            "C",
+            "D",
+            "R",
+            "0",
+            "0",
+            "A2"
+          ],
+          "origin": [
+            9,
+            69
+          ],
+          "box": [
+            17,
+            15
+          ]
+        },
+        {
+          "type": 9008,
+          "name": null,
+          "label": "-H",
+          "pins": [
+            "X1",
+            "X2",
+            "0"
+          ],
+          "origin": [
+            15,
+            90
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9009,
+          "name": null,
+          "label": "-H",
+          "pins": [
+            "X1",
+            "X2",
+            "0"
+          ],
+          "origin": [
+            30,
+            90
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9010,
+          "name": null,
+          "label": "-H",
+          "pins": [
+            "X1",
+            "X2"
+          ],
+          "origin": [
+            15,
+            108
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9011,
+          "name": null,
+          "label": "-H",
+          "pins": [
+            "X1",
+            "X2"
+          ],
+          "origin": [
+            30,
+            108
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9012,
+          "name": null,
+          "label": "-H",
+          "pins": [
+            "X1",
+            "X2"
+          ],
+          "origin": [
+            48,
+            108
+          ],
+          "box": [
+            8,
+            15
+          ]
+        },
+        {
+          "type": 9013,
+          "name": null,
+          "label": "-H",
+          "pins": [
+            "X1",
+            "X2"
+          ],
+          "origin": [
+            69,
+            108
+          ],
+          "box": [
+            8,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "number": 11,
+      "title": "Section 11",
+      "source": "section11.cad",
+      "items": [
+        {
+          "type": 1070,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "A1",
+            "A2",
+            "1",
+            "2"
+          ],
+          "origin": [
+            12,
+            6
+          ],
+          "box": [
+            15,
+            15
+          ]
+        },
+        {
+          "type": 1071,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "A1",
+            "A2",
+            "1",
+            "2"
+          ],
+          "origin": [
+            33,
+            6
+          ],
+          "box": [
+            15,
+            15
+          ]
+        },
+        {
+          "type": 1072,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6",
+            "A1",
+            "A2"
+          ],
+          "origin": [
+            57,
+            6
+          ],
+          "box": [
+            27,
+            15
+          ]
+        },
+        {
+          "type": 1073,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "1",
+            "3",
+            "5",
+            "2",
+            "4",
+            "6",
+            "A1",
+            "A2",
+            "A3"
+          ],
+          "origin": [
+            90,
+            6
+          ],
+          "box": [
+            33,
+            15
+          ]
+        },
+        {
+          "type": 9040,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "L1",
+            "L2",
+            "L3",
+            "N"
+          ],
+          "origin": [
+            15,
+            24
+          ],
+          "box": [
+            18,
+            15
+          ]
+        },
+        {
+          "type": 9041,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "origin": [
+            45,
+            24
+          ],
+          "box": [
+            18,
+            15
+          ]
+        },
+        {
+          "type": 9042,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "origin": [
+            75,
+            24
+          ],
+          "box": [
+            18,
+            15
+          ]
+        },
+        {
+          "type": 9043,
+          "name": null,
+          "label": "-K",
+          "pins": [
+            "L1",
+            "L2",
+            "L3"
+          ],
+          "origin": [
+            105,
+            24
+          ],
+          "box": [
+            18,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "number": 12,
+      "title": "Section 12",
+      "source": "section12.cad",
+      "items": [
+        {
+          "type": 10000,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            6,
+            9
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10010,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            27,
+            9
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10040,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            48,
+            12
+          ],
+          "box": [
+            21,
+            9
+          ]
+        },
+        {
+          "type": 10041,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            69,
+            9
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10020,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            87,
+            9
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10030,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            111,
+            9
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10064,
+          "name": null,
+          "label": "-U",
+          "pins": [
+            "S",
+            "R",
+            "Q"
+          ],
+          "origin": [
+            6,
+            33
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10065,
+          "name": null,
+          "label": "-U",
+          "pins": [
+            "S",
+            "R",
+            "Q"
+          ],
+          "origin": [
+            27,
+            33
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10066,
+          "name": null,
+          "label": "-T",
+          "pins": [
+            "IN",
+            "Q",
+            "0",
+            "1"
+          ],
+          "origin": [
+            45,
+            33
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10067,
+          "name": null,
+          "label": "-T",
+          "pins": [
+            "IN",
+            "Q",
+            "0",
+            "1"
+          ],
+          "origin": [
+            66,
+            33
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10068,
+          "name": null,
+          "label": "-T",
+          "pins": [
+            "IN",
+            "Q",
+            "0",
+            "1"
+          ],
+          "origin": [
+            87,
+            33
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10069,
+          "name": null,
+          "label": "-T",
+          "pins": [
+            "IN",
+            "Q",
+            "0",
+            "1",
+            "0",
+            "1"
+          ],
+          "origin": [
+            105,
+            33
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10063,
+          "name": null,
+          "label": "-C",
+          "pins": [
+            "R",
+            "C",
+            "D",
+            "Q",
+            "0",
+            "0"
+          ],
+          "origin": [
+            126,
+            30
+          ],
+          "box": [
+            21,
+            21
+          ]
+        },
+        {
+          "type": 10075,
+          "name": null,
+          "label": "-C",
+          "pins": [
+            "+",
+            "-",
+            "R",
+            "Q",
+            "0",
+            "0",
+            "L"
+          ],
+          "origin": [
+            147,
+            30
+          ],
+          "box": [
+            21,
+            30
+          ]
+        },
+        {
+          "type": 10070,
+          "name": null,
+          "label": "-I",
+          "pins": [],
+          "origin": [
+            18,
+            54
+          ],
+          "box": [
+            3,
+            3
+          ]
+        },
+        {
+          "type": 10071,
+          "name": null,
+          "label": "-Q",
+          "pins": [],
+          "origin": [
+            24,
+            54
+          ],
+          "box": [
+            21,
+            3
+          ]
+        },
+        {
+          "type": 10072,
+          "name": null,
+          "label": "-D",
+          "pins": [
+            "a",
+            "b",
+            "0",
+            "c",
+            "d"
+          ],
+          "origin": [
+            12,
+            81
+          ],
+          "box": [
+            21,
+            3
+          ]
+        },
+        {
+          "type": 10073,
+          "name": null,
+          "label": "-D",
+          "pins": [
+            "a",
+            "b",
+            "0",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g"
+          ],
+          "origin": [
+            36,
+            81
+          ],
+          "box": [
+            21,
+            3
+          ]
+        },
+        {
+          "type": 10074,
+          "name": null,
+          "label": "-D",
+          "pins": [
+            "1",
+            "2",
+            "4",
+            "8",
+            "C"
+          ],
+          "origin": [
+            60,
+            81
+          ],
+          "box": [
+            21,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "number": 13,
+      "title": "Section 13",
+      "source": "section13.cad",
+      "items": [
+        {
+          "type": 10050,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            6,
+            12
+          ],
+          "box": [
+            15,
+            9
+          ]
+        },
+        {
+          "type": 10051,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            24,
+            12
+          ],
+          "box": [
+            15,
+            9
+          ]
+        },
+        {
+          "type": 10052,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            45,
+            12
+          ],
+          "box": [
+            15,
+            9
+          ]
+        },
+        {
+          "type": 10053,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            63,
+            12
+          ],
+          "box": [
+            15,
+            9
+          ]
+        },
+        {
+          "type": 10060,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            6,
+            33
+          ],
+          "box": [
+            15,
+            9
+          ]
+        },
+        {
+          "type": 10061,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            27,
+            33
+          ],
+          "box": [
+            15,
+            9
+          ]
+        },
+        {
+          "type": 10062,
+          "name": null,
+          "label": "-U",
+          "pins": [],
+          "origin": [
+            48,
+            33
+          ],
+          "box": [
+            15,
+            9
+          ]
+        },
+        {
+          "type": 10064,
+          "name": null,
+          "label": "-U",
+          "pins": [
+            "S",
+            "R",
+            "Q"
+          ],
+          "origin": [
+            9,
+            48
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10065,
+          "name": null,
+          "label": "-U",
+          "pins": [
+            "S",
+            "R",
+            "Q"
+          ],
+          "origin": [
+            30,
+            48
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10066,
+          "name": null,
+          "label": "-T",
+          "pins": [
+            "IN",
+            "Q",
+            "0",
+            "1"
+          ],
+          "origin": [
+            51,
+            48
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10067,
+          "name": null,
+          "label": "-T",
+          "pins": [
+            "IN",
+            "Q",
+            "0",
+            "1"
+          ],
+          "origin": [
+            72,
+            48
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10068,
+          "name": null,
+          "label": "-T",
+          "pins": [
+            "IN",
+            "Q",
+            "0",
+            "1"
+          ],
+          "origin": [
+            93,
+            48
+          ],
+          "box": [
+            21,
+            15
+          ]
+        },
+        {
+          "type": 10063,
+          "name": null,
+          "label": "-C",
+          "pins": [
+            "R",
+            "C",
+            "D",
+            "Q",
+            "0",
+            "0"
+          ],
+          "origin": [
+            114,
+            48
+          ],
+          "box": [
+            21,
+            21
+          ]
+        },
+        {
+          "type": 10075,
+          "name": null,
+          "label": "-C",
+          "pins": [
+            "+",
+            "-",
+            "R",
+            "Q",
+            "0",
+            "0",
+            "L"
+          ],
+          "origin": [
+            141,
+            48
+          ],
+          "box": [
+            21,
+            30
+          ]
+        }
+      ]
+    },
+    {
+      "number": 14,
+      "title": "Section 14",
+      "source": "section14.cad",
+      "items": [
+        {
+          "type": 10100,
+          "name": null,
+          "label": "0",
+          "pins": [],
+          "origin": [
+            6,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 10101,
+          "name": null,
+          "label": "1",
+          "pins": [],
+          "origin": [
+            27,
+            6
+          ],
+          "box": [
+            12,
+            15
+          ]
+        },
+        {
+          "type": 10102,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            45,
+            9
+          ],
+          "box": [
+            24,
+            9
+          ]
+        },
+        {
+          "type": 10103,
+          "name": null,
+          "label": "",
+          "pins": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "origin": [
+            60,
+            12
+          ],
+          "box": [
+            21,
+            6
+          ]
+        },
+        {
+          "type": 10106,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            9,
+            27
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 10112,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            129,
+            27
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 10104,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            171,
+            27
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 10105,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            231,
+            27
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 10107,
+          "name": null,
+          "label": "1",
+          "pins": [],
+          "origin": [
+            36,
+            84
+          ],
+          "box": [
+            3,
+            3
+          ]
+        },
+        {
+          "type": 10108,
+          "name": null,
+          "label": "1",
+          "pins": [],
+          "origin": [
+            48,
+            75
+          ],
+          "box": [
+            3,
+            12
+          ]
+        },
+        {
+          "type": 10111,
+          "name": null,
+          "label": "M",
+          "pins": [],
+          "origin": [
+            75,
+            81
+          ],
+          "box": [
+            9,
+            21
+          ]
+        }
+      ]
+    },
+    {
+      "number": 15,
+      "title": "Section 15",
+      "source": "section15.cad",
+      "items": [
+        {
+          "type": 10200,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            3,
+            0
+          ],
+          "box": [
+            33,
+            57
+          ]
+        },
+        {
+          "type": 10201,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            36,
+            0
+          ],
+          "box": [
+            32,
+            57
+          ]
+        },
+        {
+          "type": 10202,
+          "name": null,
+          "label": "LOGO",
+          "pins": [],
+          "origin": [
+            72,
+            0
+          ],
+          "box": [
+            87,
+            105
+          ]
+        },
+        {
+          "type": 10203,
+          "name": null,
+          "label": "PLC",
+          "pins": [],
+          "origin": [
+            165,
+            3
+          ],
+          "box": [
+            165,
+            141
+          ]
+        },
+        {
+          "type": 10204,
+          "name": null,
+          "label": "I0.0",
+          "pins": [],
+          "origin": [
+            18,
+            108
+          ],
+          "box": [
+            12,
+            27
+          ]
+        },
+        {
+          "type": 10205,
+          "name": null,
+          "label": "Q0.0",
+          "pins": [],
+          "origin": [
+            42,
+            108
+          ],
+          "box": [
+            12,
+            27
+          ]
+        },
+        {
+          "type": 10206,
+          "name": null,
+          "label": "-CPU",
+          "pins": [],
+          "origin": [
+            66,
+            108
+          ],
+          "box": [
+            30,
+            27
+          ]
+        },
+        {
+          "type": 10207,
+          "name": null,
+          "label": "1M",
+          "pins": [],
+          "origin": [
+            18,
+            150
+          ],
+          "box": [
+            12,
+            27
+          ]
+        },
+        {
+          "type": 10208,
+          "name": null,
+          "label": "1L",
+          "pins": [],
+          "origin": [
+            45,
+            150
+          ],
+          "box": [
+            12,
+            27
+          ]
+        }
+      ]
+    },
+    {
+      "number": 16,
+      "title": "Section 16",
+      "source": "section16.cad",
+      "items": [
+        {
+          "type": 10500,
+          "name": null,
+          "label": "-A",
+          "pins": [
+            "50",
+            "50",
+            "-a0",
+            "-a1",
+            "-a0",
+            "-a1",
+            "-A+"
+          ],
+          "origin": [
+            21,
+            12
+          ],
+          "box": [
+            69,
+            57
+          ]
+        },
+        {
+          "type": 10501,
+          "name": null,
+          "label": "-A",
+          "pins": [
+            "50",
+            "50",
+            "-a0",
+            "-a1",
+            "-a0",
+            "-a1",
+            "-A+"
+          ],
+          "origin": [
+            99,
+            18
+          ],
+          "box": [
+            69,
+            57
+          ]
+        },
+        {
+          "type": 10502,
+          "name": null,
+          "label": "-A",
+          "pins": [
+            "50",
+            "50",
+            "-a0",
+            "-a1",
+            "-a0",
+            "-a1",
+            "-A+"
+          ],
+          "origin": [
+            177,
+            18
+          ],
+          "box": [
+            54,
+            57
+          ]
+        },
+        {
+          "type": 10503,
+          "name": null,
+          "label": "-A",
+          "pins": [
+            "50",
+            "50",
+            "-a0",
+            "-a1",
+            "-a0",
+            "-a1",
+            "-A+"
+          ],
+          "origin": [
+            21,
+            84
+          ],
+          "box": [
+            54,
+            57
+          ]
+        },
+        {
+          "type": 10504,
+          "name": null,
+          "label": "-A",
+          "pins": [
+            "50",
+            "50",
+            "-a0",
+            "-a1",
+            "-a0",
+            "-a1",
+            "-A+"
+          ],
+          "origin": [
+            84,
+            81
+          ],
+          "box": [
+            54,
+            57
+          ]
+        },
+        {
+          "type": 10505,
+          "name": null,
+          "label": "-A",
+          "pins": [
+            "50",
+            "50",
+            "-a0",
+            "-a1",
+            "-a0",
+            "-a1",
+            "-A+"
+          ],
+          "origin": [
+            144,
+            87
+          ],
+          "box": [
+            54,
+            57
+          ]
+        },
+        {
+          "type": 10506,
+          "name": null,
+          "label": "-A",
+          "pins": [
+            "50",
+            "50",
+            "-a0",
+            "-a1",
+            "-a0",
+            "-a1",
+            "-A+"
+          ],
+          "origin": [
+            204,
+            87
+          ],
+          "box": [
+            54,
+            57
+          ]
+        },
+        {
+          "type": 10507,
+          "name": null,
+          "label": "-V",
+          "pins": [
+            "-v",
+            "V+"
+          ],
+          "origin": [
+            24,
+            153
+          ],
+          "box": [
+            54,
+            57
+          ]
+        },
+        {
+          "type": 10508,
+          "name": null,
+          "label": "-M",
+          "pins": [
+            "50",
+            "-M+"
+          ],
+          "origin": [
+            84,
+            153
+          ],
+          "box": [
+            54,
+            57
+          ]
+        },
+        {
+          "type": 10509,
+          "name": null,
+          "label": "-M",
+          "pins": [
+            "50",
+            "50",
+            "-MD"
+          ],
+          "origin": [
+            135,
+            162
+          ],
+          "box": [
+            54,
+            57
+          ]
+        }
+      ]
+    },
+    {
+      "number": 17,
+      "title": "Section 17",
+      "source": "section17.cad",
+      "items": [
+        {
+          "type": 4000,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            6,
+            3
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 4009,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            24,
+            3
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 4010,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            42,
+            3
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 4018,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            63,
+            3
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 4019,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            78,
+            3
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 4001,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            111,
+            6
+          ],
+          "box": [
+            3,
+            3
+          ]
+        },
+        {
+          "type": 4002,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            9,
+            27
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 4003,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            36,
+            33
+          ],
+          "box": [
+            3,
+            6
+          ]
+        },
+        {
+          "type": 4004,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            42,
+            33
+          ],
+          "box": [
+            6,
+            6
+          ]
+        },
+        {
+          "type": 4011,
+          "name": null,
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            60,
+            30
+          ],
+          "box": [
+            6,
+            15
+          ]
+        },
+        {
+          "type": 4012,
+          "name": null,
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            75,
+            36
+          ],
+          "box": [
+            3,
+            3
+          ]
+        },
+        {
+          "type": 4015,
+          "name": null,
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            87,
+            36
+          ],
+          "box": [
+            9,
+            3
+          ]
+        },
+        {
+          "type": 4016,
+          "name": null,
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            108,
+            36
+          ],
+          "box": [
+            15,
+            3
+          ]
+        },
+        {
+          "type": 4017,
+          "name": null,
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            129,
+            36
+          ],
+          "box": [
+            21,
+            3
+          ]
+        },
+        {
+          "type": 4013,
+          "name": null,
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            165,
+            36
+          ],
+          "box": [
+            12,
+            6
+          ]
+        },
+        {
+          "type": 4014,
+          "name": null,
+          "label": "-X",
+          "pins": [],
+          "origin": [
+            192,
+            36
+          ],
+          "box": [
+            3,
+            6
+          ]
+        }
+      ]
+    },
+    {
+      "number": 18,
+      "title": "Section 18",
+      "source": "section18sidebar for drawing.cad",
+      "items": [
+        {
+          "type": 1,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            12,
+            9
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 2,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            48,
+            15
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 3,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            102,
+            12
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 4,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            24,
+            48
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 5,
+          "name": null,
+          "label": "",
+          "pins": [],
+          "origin": [
+            72,
+            48
+          ],
+          "box": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": 8,
+          "name": null,
+          "label": "",
+          "pins": [
+            " 0",
+            " 0",
+            " 0",
+            " 0",
+            " 0",
+            " 0",
+            " 0",
+            " 0"
+          ],
+          "origin": [
+            108,
+            69
+          ],
+          "box": [
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}

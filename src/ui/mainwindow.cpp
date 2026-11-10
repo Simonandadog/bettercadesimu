@@ -245,8 +245,8 @@ void MainWindow::updateInspector(const cad::Object* object)
 
     lines << QString();
     lines << tr("fields:");
-    for (int i = 0; i < cad::kFieldCount; ++i) {
-        const cad::Field& field = object->fields[i];
+    for (int i = 0; i < object->fields.size(); ++i) {
+        const cad::Field& field = object->fields.at(i);
         if (field.text.isEmpty()) {
             lines << QStringLiteral("  %1: %2").arg(i, 2).arg(field.value);
         } else {

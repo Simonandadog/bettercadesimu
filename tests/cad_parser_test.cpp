@@ -99,6 +99,40 @@ void testGeometryAndText()
     CHECK(object.text() == QStringLiteral("Motore Trifase"));
 }
 
+void testVariablePinCount()
+{
+    // A symbol with more than eight pins carries extra pin-flag fields, which
+    // shifts everything after them (geometry, box, text). Regression for
+    // section 6, whose 9-pin symbols used to truncate the rest of the file.
+    QStringList fields;
+    for (int i = 0; i < 9; ++i)
+        fields << QStringLiteral("1");
+    fields << QStringLiteral("12") << QStringLiteral("34"); // x, y
+    while (fields.size() < 9 + cad::kTailFields)
+        fields << QStringLiteral("0");
+
+    const QByteArray data = document({
+        record(1052, QStringLiteral("1052#-T##1#2#3#4#5#6#7#8#9"), fields),
+        record(1053, QStringLiteral("1#L1")),
+    });
+
+    QString error;
+    const cad::Document parsed = cad::Document::parse(data, &error);
+
+    CHECK(error.isEmpty());
+    CHECK(parsed.recordCount == 2);
+    CHECK(parsed.objects.size() == 2);
+
+    const cad::Object& first = parsed.objects.first();
+    CHECK(first.pinFlagCount == 9);
+    CHECK(first.pins.size() == 9);
+    CHECK(first.x() == 12);
+    CHECK(first.y() == 34);
+
+    CHECK(parsed.objects.last().label == QStringLiteral("L1"));
+    CHECK(parsed.objects.last().pinFlagCount == cad::kMinPinFlags);
+}
+
 void testMissingHeader()
 {
     QString error;
@@ -150,6 +184,11 @@ void testFixture()
     CHECK(error.isEmpty());
     CHECK(parsed.recordCount > 0);
     CHECK(!parsed.objects.isEmpty());
+
+    const QString expected = qEnvironmentVariable("BETTERCADESIMU_EXPECTED_RECORDS");
+    if (!expected.isEmpty())
+        CHECK(parsed.recordCount == expected.toInt());
+    CHECK(parsed.warnings.isEmpty());
 }
 
 } // namespace
@@ -158,6 +197,7 @@ int main()
 {
     testRecordReplay();
     testGeometryAndText();
+    testVariablePinCount();
     testMissingHeader();
     testTrailingTokens();
     testMetadata();

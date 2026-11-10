@@ -37,8 +37,8 @@ QString describeGeometry(const cad::Object& object)
     return QStringLiteral("origin (%1, %2), box %3x%4")
         .arg(object.x())
         .arg(object.y())
-        .arg(object.fields[14].value)
-        .arg(object.fields[15].value);
+        .arg(object.boxWidth())
+        .arg(object.boxHeight());
 }
 
 void dumpDocument(const cad::Document& document)

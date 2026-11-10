@@ -9,8 +9,13 @@
 
 namespace cad {
 
-// A CADe SIMU record carries a fixed 23 numeric fields after its type field.
-inline constexpr int kFieldCount = 23;
+// A record is: id, type field, max(8, pinCount) pin-flag fields, then a
+// fixed 15-field tail (geometry, bounding box, inline text, ...).
+// kFieldCount is therefore only the minimum payload; symbols with more than
+// eight pins carry extra pin-flag fields (see Object::pinFlagCount).
+inline constexpr int kMinPinFlags = 8;
+inline constexpr int kTailFields = 15;
+inline constexpr int kFieldCount = kMinPinFlags + kTailFields; // 23
 
 struct Field {
     int value = 0;
@@ -24,15 +29,21 @@ struct Object {
     QString sublabel; // second '#' field; meaning not fully known yet
     QStringList typeParts; // raw type field split on '#'
     QStringList pins;      // pin names, when present
-    std::array<Field, kFieldCount> fields{};
+    QList<Field> fields;   // raw fields in file order
+    int pinFlagCount = kMinPinFlags;
     int definitionIndex = -1; // which record last defined this object
 
-    int x() const { return fields[8].value; }
-    int y() const { return fields[9].value; }
-    int x2() const { return fields[10].value; }
-    int y2() const { return fields[11].value; }
+    // Tail accessors; index 0 is the first field after the pin flags.
+    const Field& tail(int index) const { return fields.at(pinFlagCount + index); }
 
-    QString text() const { return fields[22].text; }
+    int x() const { return tail(0).value; }
+    int y() const { return tail(1).value; }
+    int x2() const { return tail(2).value; }
+    int y2() const { return tail(3).value; }
+    int boxWidth() const { return tail(6).value; }
+    int boxHeight() const { return tail(7).value; }
+
+    QString text() const { return tail(14).text; }
 
     bool isLine() const;
     bool isText() const { return type == 8; }

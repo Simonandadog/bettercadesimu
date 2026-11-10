@@ -103,37 +103,69 @@ Document Document::parse(const QByteArray& data, QString* error)
     QList<int> order;
 
     int i = 1; // tokens[0] is the header
-    while (i + 1 + kFieldCount <= tokens.size()) {
+    while (i + 1 < tokens.size()) {
         bool ok = false;
         const int id = tokens.at(i).trimmed().toInt(&ok);
         if (!ok)
             break;
 
+        QStringList typeParts = tokens.at(i + 1).split(QLatin1Char('#'), Qt::KeepEmptyParts);
+        const int type = typeParts.value(0).trimmed().toInt(&ok);
+        if (!ok)
+            break;
+
+        int pinCount = typeParts.size() - 3;
+        if (pinCount < 0)
+            pinCount = 0;
+        const int pinFlags = qMax(kMinPinFlags, pinCount);
+        const int fieldCount = pinFlags + kTailFields;
+        const int recordTokens = 2 + fieldCount;
+
+        if (i + recordTokens > tokens.size()) {
+            document.warnings.append(
+                QStringLiteral("record %1 is truncated (%2 token(s) missing)")
+                    .arg(id)
+                    .arg(i + recordTokens - tokens.size()));
+            i = tokens.size();
+            break;
+        }
+
         Object object;
         object.id = id;
         object.definitionIndex = document.recordCount;
-        object.typeParts = tokens.at(i + 1).split(QLatin1Char('#'), Qt::KeepEmptyParts);
-        object.type = object.typeParts.value(0).trimmed().toInt();
+        object.type = type;
+        object.typeParts = typeParts;
         object.label = object.typeParts.value(1);
         object.sublabel = object.typeParts.value(2);
         for (int part = 3; part < object.typeParts.size(); ++part)
             object.pins.append(object.typeParts.at(part));
 
-        for (int field = 0; field < kFieldCount; ++field)
-            object.fields[field] = parseField(tokens.at(i + 2 + field));
+        object.pinFlagCount = pinFlags;
+        object.fields.reserve(fieldCount);
+        for (int field = 0; field < fieldCount; ++field)
+            object.fields.append(parseField(tokens.at(i + 2 + field)));
 
         if (!byId.contains(id))
             order.append(id);
         byId.insert(id, object);
 
         ++document.recordCount;
-        i += 1 + 1 + kFieldCount; // id + type field + 23 fields
+        i += recordTokens;
     }
 
-    if (i != tokens.size()) {
-        document.warnings.append(
-            QStringLiteral("%1 trailing token(s) after the last complete record")
-                .arg(tokens.size() - i));
+    if (i < tokens.size()) {
+        bool whitespaceOnly = true;
+        for (int t = i; t < tokens.size(); ++t) {
+            if (!tokens.at(t).trimmed().isEmpty()) {
+                whitespaceOnly = false;
+                break;
+            }
+        }
+        if (!whitespaceOnly) {
+            document.warnings.append(
+                QStringLiteral("%1 trailing token(s) after the last complete record")
+                    .arg(tokens.size() - i));
+        }
     }
 
     for (int id : order)
