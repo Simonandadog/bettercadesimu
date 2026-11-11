@@ -2,6 +2,7 @@
 
 #include <QGraphicsView>
 #include <QList>
+#include <QPair>
 #include <QPointF>
 #include <QSize>
 
@@ -9,8 +10,11 @@
 
 class QGraphicsScene;
 class QKeyEvent;
+class QUndoStack;
 
 namespace ui {
+
+class CadItem;
 
 class CanvasView : public QGraphicsView
 {
@@ -18,6 +22,7 @@ class CanvasView : public QGraphicsView
 
 public:
     explicit CanvasView(QWidget* parent = nullptr);
+    ~CanvasView() override;
 
     void setDocument(const cad::Document& document);
     void setObjects(const QList<cad::Object>& objects);
@@ -40,6 +45,14 @@ public:
     void deleteSelection();
     void selectAll();
 
+    QUndoStack* undoStack() const { return m_undoStack; }
+
+    // Low-level scene operations. Undo commands call these so they bypass the
+    // undo stack; normal editing code should use the methods above.
+    int appendObject(const cad::Object& object, int id = -1);
+    void removeObjectById(int id);
+    CadItem* itemById(int id) const;
+
     QPointF viewCenterInUnits() const;
 
 signals:
@@ -59,8 +72,10 @@ private:
     void emitSelection();
     void applyZoom(double factor);
     void addCadItem(const cad::Object& object);
+    void updateSceneRect();
 
     QGraphicsScene* m_scene = nullptr;
+    QUndoStack* m_undoStack = nullptr;
     bool m_grid = true;
     bool m_panning = false;
     QPoint m_panStart;
@@ -68,6 +83,9 @@ private:
     bool m_hasPending = false;
     cad::Object m_pending;
     int m_nextId = 1;
+
+    // Object positions when a drag begins, so the move can be undone.
+    QList<QPair<int, QPointF>> m_dragStart;
 };
 
 // Render a document to a PNG without opening a window. Used by --render and

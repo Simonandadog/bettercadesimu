@@ -6,11 +6,14 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QScrollBar>
+#include <QUndoCommand>
+#include <QUndoStack>
 #include <QVarLengthArray>
 #include <QWheelEvent>
 #include <QtMath>
 
 #include <algorithm>
+#include <utility>
 
 #include "ui/caditem.h"
 #include "ui/symbols.h"
@@ -21,11 +24,112 @@ namespace {
 // CADe SIMU draws a green snap dot every 3 logical units.
 constexpr double kGridStepUnits = 3.0;
 
+class AddObjectCommand : public QUndoCommand
+{
+public:
+    AddObjectCommand(CanvasView* view, const cad::Object& object)
+        : QUndoCommand(QObject::tr("Add object"))
+        , m_view(view)
+        , m_object(object)
+    {
+    }
+
+    void redo() override
+    {
+        m_id = m_view->appendObject(m_object, m_id);
+
+        if (CadItem* item = m_view->itemById(m_id)) {
+            m_view->scene()->clearSelection();
+            item->setSelected(true);
+        }
+    }
+
+    void undo() override { m_view->removeObjectById(m_id); }
+
+private:
+    CanvasView* m_view;
+    cad::Object m_object;
+    int m_id = -1;
+};
+
+class RemoveObjectsCommand : public QUndoCommand
+{
+public:
+    RemoveObjectsCommand(CanvasView* view, const QList<cad::Object>& objects)
+        : QUndoCommand(objects.size() == 1 ? QObject::tr("Delete object")
+                                           : QObject::tr("Delete objects"))
+        , m_view(view)
+        , m_objects(objects)
+    {
+    }
+
+    void redo() override
+    {
+        for (const cad::Object& object : m_objects)
+            m_view->removeObjectById(object.id);
+    }
+
+    void undo() override
+    {
+        for (const cad::Object& object : m_objects)
+            m_view->appendObject(object, object.id);
+    }
+
+private:
+    CanvasView* m_view;
+    QList<cad::Object> m_objects;
+};
+
+class MoveObjectsCommand : public QUndoCommand
+{
+public:
+    MoveObjectsCommand(CanvasView* view,
+                       const QList<int>& ids,
+                       const QList<QPointF>& from,
+                       const QList<QPointF>& to)
+        : QUndoCommand(ids.size() == 1 ? QObject::tr("Move object")
+                                       : QObject::tr("Move objects"))
+        , m_view(view)
+        , m_ids(ids)
+        , m_from(from)
+        , m_to(to)
+    {
+    }
+
+    void redo() override
+    {
+        // The drag already put the items where they belong.
+        if (m_skipFirstRedo) {
+            m_skipFirstRedo = false;
+            return;
+        }
+        apply(m_to);
+    }
+
+    void undo() override { apply(m_from); }
+
+private:
+    void apply(const QList<QPointF>& positions)
+    {
+        for (int i = 0; i < m_ids.size() && i < positions.size(); ++i) {
+            if (CadItem* item = m_view->itemById(m_ids.at(i)))
+                item->setPos(positions.at(i));
+        }
+    }
+
+    CanvasView* m_view;
+    QList<int> m_ids;
+    QList<QPointF> m_from;
+    QList<QPointF> m_to;
+    bool m_skipFirstRedo = true;
+};
+
 } // namespace
 
 CanvasView::CanvasView(QWidget* parent)
     : QGraphicsView(parent)
     , m_scene(new QGraphicsScene(this))
+    , m_undoStack(new QUndoStack(this))
 {
     setScene(m_scene);
 
@@ -45,8 +149,22 @@ CanvasView::CanvasView(QWidget* parent)
     setFocusPolicy(Qt::StrongFocus);
 
     connect(m_scene, &QGraphicsScene::selectionChanged, this, &CanvasView::emitSelection);
+    connect(m_undoStack, &QUndoStack::indexChanged, this, [this] {
+        updateSceneRect();
+        emit documentEdited();
+    });
 
     m_scene->setSceneRect(0, 0, 400 * kUnit, 300 * kUnit);
+}
+
+CanvasView::~CanvasView()
+{
+    // The scene is a child of this widget and is destroyed before the undo
+    // stack. Tear the stack down first, without emitting, so clearing it
+    // cannot touch a half-destroyed scene or window.
+    m_undoStack->blockSignals(true);
+    delete m_undoStack;
+    m_undoStack = nullptr;
 }
 
 void CanvasView::setDocument(const cad::Document& document)
@@ -79,6 +197,48 @@ void CanvasView::addCadItem(const cad::Object& object)
     m_nextId = qMax(m_nextId, object.id + 1);
 }
 
+int CanvasView::appendObject(const cad::Object& object, int id)
+{
+    cad::Object copy = object;
+    if (id >= 0)
+        copy.id = id;
+    if (copy.id < 0)
+        copy.id = m_nextId;
+    m_nextId = qMax(m_nextId, copy.id + 1);
+
+    addCadItem(copy);
+    return copy.id;
+}
+
+void CanvasView::removeObjectById(int id)
+{
+    if (CadItem* item = itemById(id)) {
+        m_scene->removeItem(item);
+        delete item;
+    }
+}
+
+CadItem* CanvasView::itemById(int id) const
+{
+    for (QGraphicsItem* item : m_scene->items()) {
+        if (auto* cadItem = qgraphicsitem_cast<CadItem*>(item)) {
+            if (cadItem->object().id == id)
+                return cadItem;
+        }
+    }
+    return nullptr;
+}
+
+void CanvasView::updateSceneRect()
+{
+    QRectF bounds = m_scene->itemsBoundingRect();
+    if (bounds.isEmpty())
+        bounds = QRectF(0, 0, 400 * kUnit, 300 * kUnit);
+    else
+        bounds = bounds.adjusted(-60, -60, 60, 60);
+    m_scene->setSceneRect(bounds);
+}
+
 QList<cad::Object> CanvasView::objects() const
 {
     QList<cad::Object> result;
@@ -96,6 +256,8 @@ QList<cad::Object> CanvasView::objects() const
 void CanvasView::clearDocument()
 {
     m_scene->clear();
+    m_undoStack->clear();
+    m_dragStart.clear();
     resetTransform();
     cancelInsert();
     m_nextId = 1;
@@ -103,22 +265,8 @@ void CanvasView::clearDocument()
 
 void CanvasView::insertObject(cad::Object object)
 {
-    if (object.id < 0)
-        object.id = m_nextId++;
-    else
-        m_nextId = qMax(m_nextId, object.id + 1);
-
-    auto* item = new CadItem(object);
-    item->setEditable(true);
-    m_scene->addItem(item);
-
-    m_scene->clearSelection();
-    item->setSelected(true);
-    emit documentEdited();
-
-    const QRectF bounds = m_scene->itemsBoundingRect().adjusted(-60, -60, 60, 60);
-    if (bounds != m_scene->sceneRect())
-        m_scene->setSceneRect(bounds);
+    object.id = -1;
+    m_undoStack->push(new AddObjectCommand(this, object));
 }
 
 void CanvasView::beginInsert(const cad::Object& prototype)
@@ -136,17 +284,20 @@ void CanvasView::cancelInsert()
 
 void CanvasView::deleteSelection()
 {
-    const QList<QGraphicsItem*> selected = m_scene->selectedItems();
-    if (selected.isEmpty())
-        return;
-
-    for (QGraphicsItem* item : selected) {
-        m_scene->removeItem(item);
-        delete item;
+    QList<cad::Object> objects;
+    for (QGraphicsItem* item : m_scene->selectedItems()) {
+        if (auto* cadItem = qgraphicsitem_cast<CadItem*>(item))
+            objects.append(cadItem->object());
     }
 
+    if (objects.isEmpty())
+        return;
+
+    std::sort(objects.begin(), objects.end(),
+              [](const cad::Object& a, const cad::Object& b) { return a.id < b.id; });
+
+    m_undoStack->push(new RemoveObjectsCommand(this, objects));
     emit selectionChanged(nullptr);
-    emit documentEdited();
 }
 
 void CanvasView::selectAll()
@@ -294,6 +445,16 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
     }
 
     QGraphicsView::mousePressEvent(event);
+
+    if (event->button() == Qt::LeftButton) {
+        m_dragStart.clear();
+        for (QGraphicsItem* item : m_scene->selectedItems()) {
+            if (auto* cadItem = qgraphicsitem_cast<CadItem*>(item)) {
+                if (cadItem->isEditable())
+                    m_dragStart.append({cadItem->object().id, cadItem->pos()});
+            }
+        }
+    }
 }
 
 void CanvasView::mouseMoveEvent(QMouseEvent* event)
@@ -323,6 +484,25 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
     }
 
     QGraphicsView::mouseReleaseEvent(event);
+
+    if (event->button() != Qt::LeftButton || m_dragStart.isEmpty())
+        return;
+
+    QList<int> ids;
+    QList<QPointF> from;
+    QList<QPointF> to;
+    for (const auto& start : std::as_const(m_dragStart)) {
+        CadItem* item = itemById(start.first);
+        if (!item || item->pos() == start.second)
+            continue;
+        ids.append(start.first);
+        from.append(start.second);
+        to.append(item->pos());
+    }
+    m_dragStart.clear();
+
+    if (!ids.isEmpty())
+        m_undoStack->push(new MoveObjectsCommand(this, ids, from, to));
 }
 
 void CanvasView::keyPressEvent(QKeyEvent* event)

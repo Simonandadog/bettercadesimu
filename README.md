@@ -22,6 +22,7 @@ Early work in progress. The viewer is usable and the editor core has landed:
 - Pan / zoom / fit-to-window canvas with a snap-style grid.
 - Rubber-band selection in every direction, plus hover highlight.
 - Drag objects to move them (snapped to the grid) and <kbd>Del</kbd> to remove them.
+- Undo / redo for placement, movement and deletion (Ctrl+Z / Ctrl+Shift+Z).
 - Symbol palette dock generated from the surveyed catalogue (18 sections,
   243 entries), with painted previews. Click an entry and then click the canvas
   to place it; double-click the entry to place it in the centre.
@@ -33,7 +34,7 @@ Early work in progress. The viewer is usable and the editor core has landed:
   files to the native project format.
 - Drag-and-drop and recent-files support.
 
-Undo/redo, wiring tools, simulation and the rest of the catalogue come next.
+Wiring tools, rotation, property editing, simulation and the rest of the catalogue come next.
 
 ## Requirements
 
@@ -169,7 +170,7 @@ pin; additional poles sit 6 units to the right.
 ```
 src/cad/        format parser, project model and palette
 src/ui/         Qt canvas, symbol painting, main window
-tests/          parser unit tests
+tests/          parser, project and canvas-editing tests
 ```
 
 ## Licence

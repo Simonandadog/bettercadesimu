@@ -28,6 +28,7 @@ CadItem::CadItem(const cad::Object& object, QGraphicsItem* parent)
     , m_bounds(ui::localBounds(object))
 {
     setFlag(ItemIsSelectable, true);
+    setFlag(ItemSendsGeometryChanges, true);
     setAcceptHoverEvents(true);
     setZValue(zFor(object));
 

@@ -50,7 +50,7 @@ private slots:
     void updateInspector(const cad::Object* object);
     void showPaletteItem(QTreeWidgetItem* item, int column);
     void placePaletteItem(QTreeWidgetItem* item, int column);
-    void markModified();
+    void documentChanged();
 
 private:
     void createMenus();

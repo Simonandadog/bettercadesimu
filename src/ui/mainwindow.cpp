@@ -19,6 +19,7 @@
 #include <QSettings>
 #include <QStatusBar>
 #include <QTreeWidget>
+#include <QUndoStack>
 #include <QUrl>
 #include <QtMath>
 
@@ -63,7 +64,9 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(m_view, &CanvasView::cursorMoved, this, &MainWindow::updateCursorPosition);
     connect(m_view, &CanvasView::selectionChanged, this, &MainWindow::updateInspector);
-    connect(m_view, &CanvasView::documentEdited, this, &MainWindow::markModified);
+    connect(m_view, &CanvasView::documentEdited, this, &MainWindow::documentChanged);
+    connect(m_view->undoStack(), &QUndoStack::cleanChanged, this,
+            &MainWindow::documentChanged);
 
     readSettings();
     updateWindowTitle();
@@ -114,6 +117,16 @@ void MainWindow::createMenus()
     connect(quitAction, &QAction::triggered, this, &QWidget::close);
 
     QMenu* editMenu = menuBar()->addMenu(tr("&Edit"));
+
+    QAction* undoAction = m_view->undoStack()->createUndoAction(this, tr("&Undo"));
+    undoAction->setShortcut(QKeySequence::Undo);
+    editMenu->addAction(undoAction);
+
+    QAction* redoAction = m_view->undoStack()->createRedoAction(this, tr("&Redo"));
+    redoAction->setShortcut(QKeySequence::Redo);
+    editMenu->addAction(redoAction);
+
+    editMenu->addSeparator();
 
     QAction* deleteAction = editMenu->addAction(tr("&Delete"));
     deleteAction->setShortcut(QKeySequence::Delete);
@@ -361,6 +374,7 @@ bool MainWindow::loadFile(const QString& path)
     m_project.modified = false;
     m_currentPath = info.absoluteFilePath();
     m_view->setObjects(m_project.objects);
+    m_view->undoStack()->setClean();
 
     addRecentFile(m_currentPath);
 
@@ -426,6 +440,7 @@ bool MainWindow::saveTo(const QString& path)
     m_project.path = path;
     m_project.modified = false;
     m_currentPath = QFileInfo(path).absoluteFilePath();
+    m_view->undoStack()->setClean();
 
     addRecentFile(m_currentPath);
     QSettings settings;
@@ -482,9 +497,9 @@ void MainWindow::selectAll()
     m_view->selectAll();
 }
 
-void MainWindow::markModified()
+void MainWindow::documentChanged()
 {
-    m_project.modified = true;
+    m_project.modified = !m_view->undoStack()->isClean();
     updateWindowTitle();
     updateDocumentLabel();
 }

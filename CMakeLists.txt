@@ -56,4 +56,18 @@ if(BUILD_TESTING)
     add_executable(cad_parser_test tests/cad_parser_test.cpp)
     target_link_libraries(cad_parser_test PRIVATE cadcore Qt6::Core)
     add_test(NAME cad_parser_test COMMAND cad_parser_test)
+
+    add_executable(canvas_edit_test
+        tests/canvas_edit_test.cpp
+        src/ui/caditem.cpp
+        src/ui/caditem.h
+        src/ui/canvasview.cpp
+        src/ui/canvasview.h
+        src/ui/symbols.cpp
+        src/ui/symbols.h
+    )
+    target_link_libraries(canvas_edit_test PRIVATE cadcore Qt6::Widgets)
+    add_test(NAME canvas_edit_test COMMAND canvas_edit_test)
+    set_tests_properties(canvas_edit_test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()
