@@ -39,7 +39,7 @@ public:
     bool gridVisible() const { return m_grid; }
     void setGridVisible(bool visible);
 
-    enum class Tool { Select, Wire, Junction };
+    enum class Tool { Select, Wire, Junction, Text };
     Tool tool() const { return m_tool; }
     void setTool(Tool tool);
 
@@ -48,6 +48,7 @@ public:
     void beginInsert(const cad::Object& prototype);
     void cancelInsert();
     bool insertPending() const { return m_hasPending; }
+    void insertText(const QString& text, const QPoint& position);
     void deleteSelection();
     void selectAll();
     QList<cad::Object> selectedObjects() const;
@@ -74,6 +75,7 @@ signals:
     void documentEdited();
     void toolChanged(Tool tool);
     void objectActivated();
+    void textInsertionRequested(const QPoint& position);
 
 protected:
     void drawBackground(QPainter* painter, const QRectF& rect) override;

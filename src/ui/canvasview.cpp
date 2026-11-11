@@ -56,6 +56,25 @@ cad::Object makeJunctionObject(const QPoint& position)
     return object;
 }
 
+cad::Object makeTextObject(const QPoint& position, const QString& text)
+{
+    cad::Object object;
+    object.type = 8;
+    object.pinFlagCount = cad::kMinPinFlags;
+    object.typeParts << QString::number(object.type) << QString() << QString();
+    for (int i = 0; i < cad::kMinPinFlags; ++i)
+        object.typeParts << QString();
+
+    object.fields.resize(object.pinFlagCount + cad::kTailFields);
+    const int tail = object.pinFlagCount;
+    object.fields[tail + 0].value = position.x();
+    object.fields[tail + 1].value = position.y();
+    object.fields[tail + 2].value = position.x() + 16;
+    object.fields[tail + 3].value = position.y() + 4;
+    object.fields[tail + 14].text = text;
+    return object;
+}
+
 class AddObjectCommand : public QUndoCommand
 {
 public:
@@ -360,6 +379,13 @@ void CanvasView::insertObject(cad::Object object)
 {
     object.id = -1;
     m_undoStack->push(new AddObjectCommand(this, object));
+}
+
+void CanvasView::insertText(const QString& text, const QPoint& position)
+{
+    if (text.trimmed().isEmpty())
+        return;
+    insertObject(makeTextObject(position, text));
 }
 
 void CanvasView::beginInsert(const cad::Object& prototype)
@@ -699,6 +725,8 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
             viewport()->update();
         } else if (m_tool == Tool::Junction) {
             insertObject(makeJunctionObject(point));
+        } else if (m_tool == Tool::Text) {
+            emit textInsertionRequested(point);
         }
 
         event->accept();

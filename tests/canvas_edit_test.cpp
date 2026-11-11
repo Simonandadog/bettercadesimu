@@ -259,6 +259,42 @@ void testWireTools(ui::CanvasView& view)
     view.hide();
 }
 
+void testTextTool(ui::CanvasView& view)
+{
+    view.clearDocument();
+    view.resize(640, 480);
+    view.show();
+    view.zoomAll();
+    QApplication::processEvents();
+
+    QPoint captured;
+    QObject::connect(&view, &ui::CanvasView::textInsertionRequested, &view,
+                     [&captured](const QPoint& position) { captured = position; });
+
+    view.setTool(ui::CanvasView::Tool::Text);
+    const QPoint at = view.mapFromScene(QPointF(33 * ui::kUnit, 36 * ui::kUnit));
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, at, Qt::LeftButton,
+              Qt::LeftButton);
+    sendMouse(view.viewport(), QEvent::MouseButtonRelease, at, Qt::LeftButton,
+              Qt::NoButton);
+
+    CHECK(captured == QPoint(33, 36));
+
+    view.insertText(QStringLiteral("hello"), captured);
+    CHECK(view.objects().size() == 1);
+    if (view.objects().size() == 1) {
+        const cad::Object text = view.objects().first();
+        CHECK(text.type == 8);
+        CHECK(text.isText());
+        CHECK(text.text() == QStringLiteral("hello"));
+        CHECK(text.x() == 33);
+        CHECK(text.y() == 36);
+    }
+
+    view.setTool(ui::CanvasView::Tool::Select);
+    view.hide();
+}
+
 void testEditObject(ui::CanvasView& view)
 {
     view.clearDocument();
@@ -316,6 +352,7 @@ int main(int argc, char* argv[])
     testDragUndo(view);
     testClipboard(view);
     testWireTools(view);
+    testTextTool(view);
     testEditObject(view);
     testCleanState(view);
 

@@ -27,8 +27,9 @@ Early work in progress. The viewer is usable and the editor core has landed:
 - Edit an object's reference label or text with <kbd>F2</kbd> (or double-click it),
   with undo support.
 - Wire and junction tools: press <kbd>W</kbd> to draw a wire (click the start,
-  then the end; <kbd>Esc</kbd> cancels) and <kbd>J</kbd> to drop a junction dot.
-  Press <kbd>S</kbd> to return to selection.
+  then the end; <kbd>Esc</kbd> cancels), <kbd>J</kbd> to drop a junction dot,
+  and <kbd>T</kbd> to place a text label. Press <kbd>S</kbd> to return to
+  selection.
 - Symbol palette dock generated from the surveyed catalogue (18 sections,
   243 entries), with painted previews. Click an entry and then click the canvas
   to place it; double-click the entry to place it in the centre.

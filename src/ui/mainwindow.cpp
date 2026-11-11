@@ -14,6 +14,7 @@
 #include <QFileInfo>
 #include <QFontDatabase>
 #include <QFormLayout>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
@@ -201,11 +202,27 @@ void MainWindow::createMenus()
         addTool(tr("&Junction"), CanvasView::Tool::Junction, QKeySequence(Qt::Key_J));
     junctionToolAction->setStatusTip(tr("Place a wire junction dot"));
 
+    QAction* textToolAction =
+        addTool(tr("&Text"), CanvasView::Tool::Text, QKeySequence(Qt::Key_T));
+    textToolAction->setStatusTip(tr("Place a text label"));
+
     connect(m_view, &CanvasView::toolChanged, this,
-            [selectToolAction, wireToolAction, junctionToolAction](CanvasView::Tool tool) {
+            [selectToolAction, wireToolAction, junctionToolAction,
+             textToolAction](CanvasView::Tool tool) {
                 selectToolAction->setChecked(tool == CanvasView::Tool::Select);
                 wireToolAction->setChecked(tool == CanvasView::Tool::Wire);
                 junctionToolAction->setChecked(tool == CanvasView::Tool::Junction);
+                textToolAction->setChecked(tool == CanvasView::Tool::Text);
+            });
+
+    connect(m_view, &CanvasView::textInsertionRequested, this,
+            [this](const QPoint& position) {
+                bool accepted = false;
+                const QString text = QInputDialog::getText(
+                    this, tr("Text label"), tr("Text:"), QLineEdit::Normal, QString(),
+                    &accepted);
+                if (accepted)
+                    m_view->insertText(text, position);
             });
 
     QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
@@ -310,9 +327,26 @@ void MainWindow::showPaletteItem(QTreeWidgetItem* item, int column)
         return;
 
     if (!isPlaceable(entry->type)) {
+        if (entry->type == 4000) {
+            m_view->setTool(CanvasView::Tool::Wire);
+            statusBar()->showMessage(
+                tr("Wire tool: click the start point, then the end point"), 5000);
+            return;
+        }
+        if (entry->type == 4001) {
+            m_view->setTool(CanvasView::Tool::Junction);
+            statusBar()->showMessage(tr("Junction tool: click a wire crossing"), 5000);
+            return;
+        }
+        if (entry->type == 8) {
+            m_view->setTool(CanvasView::Tool::Text);
+            statusBar()->showMessage(tr("Text tool: click where the label should go"), 5000);
+            return;
+        }
+
         m_view->cancelInsert();
-        m_inspector->setPlainText(tr("%1\n\nThis palette entry is a drawing or "
-                                     "wiring primitive and needs a dedicated tool.")
+        m_inspector->setPlainText(tr("%1\n\nThis palette entry is a drawing primitive; "
+                                     "use the Wire or Text tool to draw it.")
                                       .arg(entry->displayName()));
         statusBar()->showMessage(tr("%1 is not placeable yet").arg(entry->displayName()), 4000);
         return;
