@@ -14,6 +14,7 @@ public:
     explicit CadItem(const cad::Object& object, QGraphicsItem* parent = nullptr);
 
     const cad::Object& object() const { return m_object; }
+    void setObject(const cad::Object& object);
 
     void setEditable(bool editable);
     bool isEditable() const { return m_editable; }

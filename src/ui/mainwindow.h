@@ -45,6 +45,7 @@ private slots:
     void reloadFile();
     void deleteSelection();
     void selectAll();
+    void editProperties();
     void showAbout();
     void updateCursorPosition(const QPointF& filePosition);
     void updateInspector(const cad::Object* object);

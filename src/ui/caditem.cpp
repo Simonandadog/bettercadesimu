@@ -78,6 +78,16 @@ void CadItem::setEditable(bool editable)
     setFlag(ItemIsMovable, editable);
 }
 
+void CadItem::setObject(const cad::Object& object)
+{
+    prepareGeometryChange();
+    m_object = object;
+    m_bounds = ui::localBounds(object);
+    setZValue(zFor(object));
+    setPos(object.x() * ui::kUnit, object.y() * ui::kUnit);
+    update();
+}
+
 QVariant CadItem::itemChange(GraphicsItemChange change, const QVariant& value)
 {
     if (change == ItemPositionChange && m_editable) {

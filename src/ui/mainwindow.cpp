@@ -4,6 +4,8 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QDockWidget>
 #include <QDragEnterEvent>
@@ -11,7 +13,9 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFontDatabase>
+#include <QFormLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -66,6 +70,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_view, &CanvasView::cursorMoved, this, &MainWindow::updateCursorPosition);
     connect(m_view, &CanvasView::selectionChanged, this, &MainWindow::updateInspector);
     connect(m_view, &CanvasView::documentEdited, this, &MainWindow::documentChanged);
+    connect(m_view, &CanvasView::objectActivated, this, &MainWindow::editProperties);
     connect(m_view->undoStack(), &QUndoStack::cleanChanged, this,
             &MainWindow::documentChanged);
 
@@ -146,6 +151,15 @@ void MainWindow::createMenus()
     duplicateAction->setStatusTip(tr("Duplicate the selected objects"));
     connect(duplicateAction, &QAction::triggered, m_view,
             &CanvasView::duplicateSelection);
+
+    QAction* propertiesAction = editMenu->addAction(tr("P&roperties…"));
+    propertiesAction->setShortcut(QKeySequence(Qt::Key_F2));
+    propertiesAction->setStatusTip(tr("Edit the label or text of the selected object"));
+    connect(propertiesAction, &QAction::triggered, this, &MainWindow::editProperties);
+    connect(editMenu, &QMenu::aboutToShow, propertiesAction,
+            [this, propertiesAction] {
+                propertiesAction->setEnabled(!m_view->selectedObjects().isEmpty());
+            });
 
     editMenu->addSeparator();
 
@@ -552,6 +566,71 @@ void MainWindow::deleteSelection()
 void MainWindow::selectAll()
 {
     m_view->selectAll();
+}
+
+void MainWindow::editProperties()
+{
+    const QList<cad::Object> selected = m_view->selectedObjects();
+    if (selected.isEmpty()) {
+        statusBar()->showMessage(tr("Select an object first."), 3000);
+        return;
+    }
+
+    const cad::Object before = selected.first();
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Object properties"));
+
+    auto* form = new QFormLayout;
+    auto* typeLabel = new QLabel(tr("#%1 · %2 (type %3)")
+                                     .arg(before.id)
+                                     .arg(cad::typeName(before.type))
+                                     .arg(before.type),
+                                 &dialog);
+    form->addRow(tr("Object:"), typeLabel);
+
+    auto* labelEdit = new QLineEdit(before.label, &dialog);
+    labelEdit->setPlaceholderText(tr("for example -K1"));
+    form->addRow(tr("&Reference:"), labelEdit);
+
+    auto* sublabelEdit = new QLineEdit(before.sublabel, &dialog);
+    form->addRow(tr("S&ublabel:"), sublabelEdit);
+
+    QLineEdit* textEdit = nullptr;
+    if (before.isText()) {
+        textEdit = new QLineEdit(before.text(), &dialog);
+        form->addRow(tr("&Text:"), textEdit);
+    }
+
+    auto* buttons =
+        new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+
+    dialog.setLayout(form);
+    labelEdit->selectAll();
+    labelEdit->setFocus();
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    cad::Object after = before;
+    after.label = labelEdit->text().trimmed();
+    after.sublabel = sublabelEdit->text().trimmed();
+    while (after.typeParts.size() < 3)
+        after.typeParts.append(QString());
+    after.typeParts[1] = after.label;
+    after.typeParts[2] = after.sublabel;
+
+    while (after.fields.size() < after.pinFlagCount + cad::kTailFields)
+        after.fields.append(cad::Field{});
+
+    if (textEdit)
+        after.fields[after.pinFlagCount + 14].text = textEdit->text();
+
+    m_view->editObject(after);
+    statusBar()->showMessage(tr("Updated #%1").arg(before.id), 3000);
 }
 
 void MainWindow::documentChanged()

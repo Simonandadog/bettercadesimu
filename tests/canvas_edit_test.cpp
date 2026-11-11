@@ -259,6 +259,35 @@ void testWireTools(ui::CanvasView& view)
     view.hide();
 }
 
+void testEditObject(ui::CanvasView& view)
+{
+    view.clearDocument();
+    view.insertObject(makeSymbol(30, 30));
+    view.undoStack()->setClean();
+
+    cad::Object object = view.objects().first();
+    object.label = QStringLiteral("-K1");
+    object.typeParts[1] = object.label;
+    view.editObject(object);
+
+    CHECK(!view.undoStack()->isClean());
+    CHECK(view.undoStack()->canUndo());
+    CHECK(view.objects().first().label == QStringLiteral("-K1"));
+    CHECK(view.objects().first().typeParts.value(1) == QStringLiteral("-K1"));
+
+    view.undoStack()->undo();
+    CHECK(view.objects().first().label == QStringLiteral("-F1"));
+    CHECK(view.objects().first().typeParts.value(1) == QStringLiteral("-F1"));
+
+    view.undoStack()->redo();
+    CHECK(view.objects().first().label == QStringLiteral("-K1"));
+
+    // Editing nothing must not add another undo step.
+    const int count = view.undoStack()->count();
+    view.editObject(view.objects().first());
+    CHECK(view.undoStack()->count() == count);
+}
+
 void testCleanState(ui::CanvasView& view)
 {
     view.clearDocument();
@@ -287,6 +316,7 @@ int main(int argc, char* argv[])
     testDragUndo(view);
     testClipboard(view);
     testWireTools(view);
+    testEditObject(view);
     testCleanState(view);
 
     if (g_failures > 0) {

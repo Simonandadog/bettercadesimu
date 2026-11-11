@@ -24,6 +24,8 @@ Early work in progress. The viewer is usable and the editor core has landed:
 - Drag objects to move them (snapped to the grid) and <kbd>Del</kbd> to remove them.
 - Undo / redo for placement, movement and deletion (Ctrl+Z / Ctrl+Shift+Z).
 - Copy / paste / duplicate selected objects (Ctrl+C, Ctrl+V, Ctrl+D).
+- Edit an object's reference label or text with <kbd>F2</kbd> (or double-click it),
+  with undo support.
 - Wire and junction tools: press <kbd>W</kbd> to draw a wire (click the start,
   then the end; <kbd>Esc</kbd> cancels) and <kbd>J</kbd> to drop a junction dot.
   Press <kbd>S</kbd> to return to selection.

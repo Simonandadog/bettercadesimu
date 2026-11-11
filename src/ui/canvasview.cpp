@@ -196,6 +196,26 @@ private:
     bool m_skipFirstRedo = true;
 };
 
+class EditObjectCommand : public QUndoCommand
+{
+public:
+    EditObjectCommand(CanvasView* view, const cad::Object& before, const cad::Object& after)
+        : QUndoCommand(QObject::tr("Edit object"))
+        , m_view(view)
+        , m_before(before)
+        , m_after(after)
+    {
+    }
+
+    void redo() override { m_view->replaceObject(m_after); }
+    void undo() override { m_view->replaceObject(m_before); }
+
+private:
+    CanvasView* m_view;
+    cad::Object m_before;
+    cad::Object m_after;
+};
+
 } // namespace
 
 CanvasView::CanvasView(QWidget* parent)
@@ -371,6 +391,48 @@ void CanvasView::deleteSelection()
 
     m_undoStack->push(new RemoveObjectsCommand(this, objects));
     emit selectionChanged(nullptr);
+}
+
+QList<cad::Object> CanvasView::selectedObjects() const
+{
+    QList<cad::Object> objects;
+    for (QGraphicsItem* item : m_scene->selectedItems()) {
+        if (auto* cadItem = qgraphicsitem_cast<CadItem*>(item))
+            objects.append(cadItem->object());
+    }
+
+    std::sort(objects.begin(), objects.end(),
+              [](const cad::Object& a, const cad::Object& b) { return a.id < b.id; });
+    return objects;
+}
+
+void CanvasView::editObject(const cad::Object& object)
+{
+    CadItem* item = itemById(object.id);
+    if (!item)
+        return;
+
+    const cad::Object before = item->object();
+    if (before.label == object.label && before.sublabel == object.sublabel
+        && before.text() == object.text() && before.typeParts == object.typeParts) {
+        return;
+    }
+
+    m_undoStack->push(new EditObjectCommand(this, before, object));
+}
+
+void CanvasView::replaceObject(const cad::Object& object)
+{
+    CadItem* item = itemById(object.id);
+    if (!item)
+        return;
+
+    item->setObject(object);
+    updateSceneRect();
+    if (item->isSelected())
+        emit selectionChanged(&item->object());
+    else
+        emitSelection();
 }
 
 void CanvasView::copySelection()
@@ -710,6 +772,21 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
 
     if (!ids.isEmpty())
         m_undoStack->push(new MoveObjectsCommand(this, ids, from, to));
+}
+
+void CanvasView::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::LeftButton && m_tool == Tool::Select) {
+        if (auto* item = qgraphicsitem_cast<CadItem*>(itemAt(event->pos()))) {
+            m_scene->clearSelection();
+            item->setSelected(true);
+            emit objectActivated();
+            event->accept();
+            return;
+        }
+    }
+
+    QGraphicsView::mouseDoubleClickEvent(event);
 }
 
 void CanvasView::keyPressEvent(QKeyEvent* event)

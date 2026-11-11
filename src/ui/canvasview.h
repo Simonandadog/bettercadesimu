@@ -50,6 +50,9 @@ public:
     bool insertPending() const { return m_hasPending; }
     void deleteSelection();
     void selectAll();
+    QList<cad::Object> selectedObjects() const;
+    void editObject(const cad::Object& object);
+    void replaceObject(const cad::Object& object);
     void copySelection();
     void paste();
     void duplicateSelection();
@@ -70,6 +73,7 @@ signals:
     void selectionChanged(const cad::Object* object);
     void documentEdited();
     void toolChanged(Tool tool);
+    void objectActivated();
 
 protected:
     void drawBackground(QPainter* painter, const QRectF& rect) override;
@@ -78,6 +82,7 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
