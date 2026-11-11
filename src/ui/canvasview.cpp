@@ -24,6 +24,38 @@ namespace {
 // CADe SIMU draws a green snap dot every 3 logical units.
 constexpr double kGridStepUnits = 3.0;
 
+cad::Object makeWireObject(const QPoint& start, const QPoint& end)
+{
+    cad::Object object;
+    object.type = 4000;
+    object.pinFlagCount = cad::kMinPinFlags;
+    object.typeParts << QString::number(object.type) << QString() << QString();
+    for (int i = 0; i < cad::kMinPinFlags; ++i)
+        object.typeParts << QString();
+
+    object.fields.resize(object.pinFlagCount + cad::kTailFields);
+    const int tail = object.pinFlagCount;
+    object.fields[tail + 0].value = start.x();
+    object.fields[tail + 1].value = start.y();
+    object.fields[tail + 2].value = end.x();
+    object.fields[tail + 3].value = end.y();
+    return object;
+}
+
+cad::Object makeJunctionObject(const QPoint& position)
+{
+    cad::Object object = makeWireObject(position, position);
+    object.type = 4001;
+    object.typeParts[0] = QString::number(object.type);
+
+    const int tail = object.pinFlagCount;
+    object.fields[tail + 4].value = -1;
+    object.fields[tail + 5].value = -1;
+    object.fields[tail + 6].value = 3;
+    object.fields[tail + 7].value = 3;
+    return object;
+}
+
 class AddObjectCommand : public QUndoCommand
 {
 public:
@@ -298,6 +330,7 @@ void CanvasView::clearDocument()
     m_scene->clear();
     m_undoStack->clear();
     m_dragStart.clear();
+    m_wireActive = false;
     resetTransform();
     cancelInsert();
     m_nextId = 1;
@@ -313,13 +346,13 @@ void CanvasView::beginInsert(const cad::Object& prototype)
 {
     m_pending = prototype;
     m_hasPending = true;
-    viewport()->setCursor(Qt::CrossCursor);
+    updateCursor();
 }
 
 void CanvasView::cancelInsert()
 {
     m_hasPending = false;
-    viewport()->unsetCursor();
+    updateCursor();
 }
 
 void CanvasView::deleteSelection()
@@ -450,6 +483,33 @@ void CanvasView::setGridVisible(bool visible)
     viewport()->update();
 }
 
+void CanvasView::setTool(Tool tool)
+{
+    if (m_tool == tool)
+        return;
+
+    m_tool = tool;
+    m_wireActive = false;
+    cancelInsert();
+    viewport()->update();
+    emit toolChanged(m_tool);
+}
+
+void CanvasView::updateCursor()
+{
+    if (m_hasPending || m_tool != Tool::Select)
+        viewport()->setCursor(Qt::CrossCursor);
+    else
+        viewport()->unsetCursor();
+}
+
+QPoint CanvasView::snapUnits(const QPointF& scenePosition) const
+{
+    const int step = int(kGridStepUnits);
+    return QPoint(qRound(scenePosition.x() / kUnit / step) * step,
+                  qRound(scenePosition.y() / kUnit / step) * step);
+}
+
 void CanvasView::emitSelection()
 {
     const QList<QGraphicsItem*> selected = m_scene->selectedItems();
@@ -495,6 +555,25 @@ void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
     painter->drawPoints(dots.constData(), static_cast<int>(dots.size()));
 }
 
+void CanvasView::drawForeground(QPainter* painter, const QRectF& rect)
+{
+    QGraphicsView::drawForeground(painter, rect);
+
+    if (!m_wireActive)
+        return;
+
+    const QPointF start(m_wireStart.x() * kUnit, m_wireStart.y() * kUnit);
+    const QPointF end(m_wireEnd.x() * kUnit, m_wireEnd.y() * kUnit);
+
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setPen(QPen(QColor(0, 120, 215), 1.5, Qt::DashLine));
+    painter->setBrush(Qt::NoBrush);
+    painter->drawLine(start, end);
+    painter->drawRect(QRectF(start.x() - 4.0, start.y() - 4.0, 8.0, 8.0));
+    painter->restore();
+}
+
 void CanvasView::wheelEvent(QWheelEvent* event)
 {
     if (event->angleDelta().y() == 0) {
@@ -521,14 +600,11 @@ void CanvasView::applyZoom(double factor)
 void CanvasView::mousePressEvent(QMouseEvent* event)
 {
     if (m_hasPending && event->button() == Qt::LeftButton) {
-        const QPointF scenePosition = mapToScene(event->pos());
-        const double step = kGridStepUnits;
-        const int x = qRound(scenePosition.x() / kUnit / step) * int(step);
-        const int y = qRound(scenePosition.y() / kUnit / step) * int(step);
+        const QPoint point = snapUnits(mapToScene(event->pos()));
 
         cad::Object object = m_pending;
-        object.fields[object.pinFlagCount + 0].value = x;
-        object.fields[object.pinFlagCount + 1].value = y;
+        object.fields[object.pinFlagCount + 0].value = point.x();
+        object.fields[object.pinFlagCount + 1].value = point.y();
         object.id = -1;
 
         cancelInsert();
@@ -541,6 +617,28 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
         m_panning = true;
         m_panStart = event->pos();
         setCursor(Qt::ClosedHandCursor);
+        event->accept();
+        return;
+    }
+
+    if (event->button() == Qt::LeftButton && m_tool != Tool::Select) {
+        const QPoint point = snapUnits(mapToScene(event->pos()));
+
+        if (m_tool == Tool::Wire) {
+            if (!m_wireActive) {
+                m_wireStart = point;
+                m_wireEnd = point;
+                m_wireActive = true;
+            } else {
+                m_wireActive = false;
+                if (point != m_wireStart)
+                    insertObject(makeWireObject(m_wireStart, point));
+            }
+            viewport()->update();
+        } else if (m_tool == Tool::Junction) {
+            insertObject(makeJunctionObject(point));
+        }
+
         event->accept();
         return;
     }
@@ -572,6 +670,14 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
+    if (m_wireActive) {
+        const QPoint point = snapUnits(scenePosition);
+        if (point != m_wireEnd) {
+            m_wireEnd = point;
+            viewport()->update();
+        }
+    }
+
     QGraphicsView::mouseMoveEvent(event);
 }
 
@@ -579,7 +685,7 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::MiddleButton && m_panning) {
         m_panning = false;
-        unsetCursor();
+        updateCursor();
         event->accept();
         return;
     }
@@ -608,8 +714,12 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
 
 void CanvasView::keyPressEvent(QKeyEvent* event)
 {
-    if (event->key() == Qt::Key_Escape && m_hasPending) {
+    if (event->key() == Qt::Key_Escape && (m_hasPending || m_wireActive)) {
         cancelInsert();
+        if (m_wireActive) {
+            m_wireActive = false;
+            viewport()->update();
+        }
         event->accept();
         return;
     }

@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QGraphicsScene>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPointF>
 #include <QUndoStack>
@@ -187,6 +188,77 @@ void testClipboard(ui::CanvasView& view)
     CHECK(view.objects().size() == 2);
 }
 
+void testWireTools(ui::CanvasView& view)
+{
+    view.clearDocument();
+    view.resize(640, 480);
+    view.show();
+    view.zoomAll();
+    QApplication::processEvents();
+
+    view.setTool(ui::CanvasView::Tool::Wire);
+    CHECK(view.tool() == ui::CanvasView::Tool::Wire);
+
+    const QPoint a = view.mapFromScene(QPointF(30 * ui::kUnit, 30 * ui::kUnit));
+    const QPoint b = view.mapFromScene(QPointF(61 * ui::kUnit, 62 * ui::kUnit));
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, a, Qt::LeftButton,
+              Qt::LeftButton);
+    sendMouse(view.viewport(), QEvent::MouseMove, b, Qt::NoButton, Qt::LeftButton);
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, b, Qt::LeftButton,
+              Qt::LeftButton);
+    sendMouse(view.viewport(), QEvent::MouseButtonRelease, b, Qt::LeftButton,
+              Qt::NoButton);
+
+    CHECK(view.objects().size() == 1);
+    if (view.objects().size() == 1) {
+        const cad::Object wire = view.objects().first();
+        CHECK(wire.type == 4000);
+        CHECK(wire.isLine());
+        CHECK(!wire.isWireGlyph());
+        CHECK(wire.x() == 30);
+        CHECK(wire.y() == 30);
+        // Both endpoints snap to the 3-unit grid.
+        CHECK(wire.x2() == 60);
+        CHECK(wire.y2() == 63);
+    }
+
+    view.undoStack()->undo();
+    CHECK(view.objects().isEmpty());
+    view.undoStack()->redo();
+    CHECK(view.objects().size() == 1);
+
+    // Escape abandons a wire that has only its start point.
+    view.setTool(ui::CanvasView::Tool::Wire);
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, a, Qt::LeftButton,
+              Qt::LeftButton);
+    QKeyEvent escape(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+    QApplication::sendEvent(&view, &escape);
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, b, Qt::LeftButton,
+              Qt::LeftButton);
+    CHECK(view.objects().size() == 1);
+
+    // A junction is a 4001 dot at the snapped click point.
+    view.setTool(ui::CanvasView::Tool::Junction);
+    const QPoint c = view.mapFromScene(QPointF(45 * ui::kUnit, 48 * ui::kUnit));
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, c, Qt::LeftButton,
+              Qt::LeftButton);
+    sendMouse(view.viewport(), QEvent::MouseButtonRelease, c, Qt::LeftButton,
+              Qt::NoButton);
+
+    CHECK(view.objects().size() == 2);
+    if (view.objects().size() == 2) {
+        const cad::Object junction = view.objects().at(1);
+        CHECK(junction.type == 4001);
+        CHECK(junction.isJunction());
+        CHECK(junction.x() == 45);
+        CHECK(junction.y() == 48);
+    }
+
+    view.setTool(ui::CanvasView::Tool::Select);
+    CHECK(view.tool() == ui::CanvasView::Tool::Select);
+    view.hide();
+}
+
 void testCleanState(ui::CanvasView& view)
 {
     view.clearDocument();
@@ -214,6 +286,7 @@ int main(int argc, char* argv[])
     testDeleteUndo(view);
     testDragUndo(view);
     testClipboard(view);
+    testWireTools(view);
     testCleanState(view);
 
     if (g_failures > 0) {

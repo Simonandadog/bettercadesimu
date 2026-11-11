@@ -3,6 +3,7 @@
 #include <QGraphicsView>
 #include <QList>
 #include <QPair>
+#include <QPoint>
 #include <QPointF>
 #include <QSize>
 
@@ -10,6 +11,7 @@
 
 class QGraphicsScene;
 class QKeyEvent;
+class QPainter;
 class QUndoStack;
 
 namespace ui {
@@ -37,6 +39,10 @@ public:
     bool gridVisible() const { return m_grid; }
     void setGridVisible(bool visible);
 
+    enum class Tool { Select, Wire, Junction };
+    Tool tool() const { return m_tool; }
+    void setTool(Tool tool);
+
     // Interactive editing.
     void insertObject(cad::Object object);
     void beginInsert(const cad::Object& prototype);
@@ -63,9 +69,11 @@ signals:
     void cursorMoved(const QPointF& filePosition);
     void selectionChanged(const cad::Object* object);
     void documentEdited();
+    void toolChanged(Tool tool);
 
 protected:
     void drawBackground(QPainter* painter, const QRectF& rect) override;
+    void drawForeground(QPainter* painter, const QRectF& rect) override;
     void wheelEvent(QWheelEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
@@ -77,12 +85,19 @@ private:
     void applyZoom(double factor);
     void addCadItem(const cad::Object& object);
     void updateSceneRect();
+    void updateCursor();
+    QPoint snapUnits(const QPointF& scenePosition) const;
 
     QGraphicsScene* m_scene = nullptr;
     QUndoStack* m_undoStack = nullptr;
     bool m_grid = true;
     bool m_panning = false;
     QPoint m_panStart;
+    Tool m_tool = Tool::Select;
+
+    bool m_wireActive = false;
+    QPoint m_wireStart;
+    QPoint m_wireEnd;
 
     bool m_hasPending = false;
     cad::Object m_pending;

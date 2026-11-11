@@ -1,6 +1,7 @@
 #include "ui/mainwindow.h"
 
 #include <QAction>
+#include <QActionGroup>
 #include <QApplication>
 #include <QCloseEvent>
 #include <QDir>
@@ -157,8 +158,43 @@ void MainWindow::createMenus()
     selectAllAction->setShortcut(QKeySequence::SelectAll);
     connect(selectAllAction, &QAction::triggered, this, &MainWindow::selectAll);
 
-    QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
+    QMenu* drawMenu = menuBar()->addMenu(tr("&Draw"));
 
+    auto* toolGroup = new QActionGroup(this);
+    toolGroup->setExclusive(true);
+
+    auto addTool = [&](const QString& text, CanvasView::Tool tool,
+                       const QKeySequence& shortcut) {
+        QAction* action = drawMenu->addAction(text);
+        action->setCheckable(true);
+        action->setShortcut(shortcut);
+        action->setActionGroup(toolGroup);
+        connect(action, &QAction::triggered, this,
+                [this, tool] { m_view->setTool(tool); });
+        return action;
+    };
+
+    QAction* selectToolAction =
+        addTool(tr("&Select"), CanvasView::Tool::Select, QKeySequence(Qt::Key_S));
+    selectToolAction->setStatusTip(tr("Select and move objects"));
+    selectToolAction->setChecked(true);
+
+    QAction* wireToolAction =
+        addTool(tr("&Wire"), CanvasView::Tool::Wire, QKeySequence(Qt::Key_W));
+    wireToolAction->setStatusTip(tr("Draw a wire: click the start, then the end"));
+
+    QAction* junctionToolAction =
+        addTool(tr("&Junction"), CanvasView::Tool::Junction, QKeySequence(Qt::Key_J));
+    junctionToolAction->setStatusTip(tr("Place a wire junction dot"));
+
+    connect(m_view, &CanvasView::toolChanged, this,
+            [selectToolAction, wireToolAction, junctionToolAction](CanvasView::Tool tool) {
+                selectToolAction->setChecked(tool == CanvasView::Tool::Select);
+                wireToolAction->setChecked(tool == CanvasView::Tool::Wire);
+                junctionToolAction->setChecked(tool == CanvasView::Tool::Junction);
+            });
+
+    QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
     QAction* zoomInAction = viewMenu->addAction(tr("Zoom &In"));
     zoomInAction->setShortcut(QKeySequence::ZoomIn);
     connect(zoomInAction, &QAction::triggered, m_view, &CanvasView::zoomIn);
@@ -281,6 +317,7 @@ void MainWindow::showPaletteItem(QTreeWidgetItem* item, int column)
     lines << tr("Press Esc to cancel placement.");
 
     m_inspector->setPlainText(lines.join(QLatin1Char('\n')));
+    m_view->setTool(CanvasView::Tool::Select);
     m_view->beginInsert(entry->makeObject());
     statusBar()->showMessage(tr("Click the canvas to place %1 (Esc to cancel)")
                                  .arg(entry->displayName()),
