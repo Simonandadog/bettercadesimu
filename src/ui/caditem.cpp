@@ -42,6 +42,12 @@ QRectF CadItem::boundingRect() const
 
 QPainterPath CadItem::shape() const
 {
+    if (m_object.isWireGlyph()) {
+        QPainterPath path;
+        path.addRect(m_bounds);
+        return path;
+    }
+
     if (m_object.isLine()) {
         QPainterPath path;
         path.moveTo(0, 0);
@@ -90,7 +96,7 @@ QVariant CadItem::itemChange(GraphicsItemChange change, const QVariant& value)
         if ((dx || dy) && m_object.fields.size() >= m_object.pinFlagCount + cad::kTailFields) {
             m_object.fields[m_object.pinFlagCount + 0].value = x;
             m_object.fields[m_object.pinFlagCount + 1].value = y;
-            if (m_object.isLine() || m_object.isText()) {
+            if ((m_object.isLine() || m_object.isText()) && !m_object.isWireGlyph()) {
                 m_object.fields[m_object.pinFlagCount + 2].value += dx;
                 m_object.fields[m_object.pinFlagCount + 3].value += dy;
             }

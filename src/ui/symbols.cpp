@@ -3,6 +3,7 @@
 #include <QFont>
 #include <QFontMetricsF>
 #include <QPainterPath>
+#include <QVector>
 #include <QtMath>
 
 namespace ui {
@@ -35,6 +36,22 @@ double spanPx()
 double poleX(int index)
 {
     return index * pitchPx();
+}
+
+QRectF recordedBox(const cad::Object& object, double defLeft, double defTop,
+                   double defWidth, double defHeight);
+int transformerTaps(const cad::Object& object);
+
+// Number of pin names actually present. The parser keeps the full pin flag
+// row, so empty entries must not be counted.
+int namedPinCount(const cad::Object& object)
+{
+    int count = 0;
+    for (const QString& pin : object.pins) {
+        if (!pin.trimmed().isEmpty())
+            ++count;
+    }
+    return count;
 }
 
 enum class Family {
@@ -295,6 +312,26 @@ QRectF symbolBox(const cad::Object& object)
         return QRectF(-3.0 * kUnit, 0, 12.0 * kUnit, 12.0 * kUnit);
     }
 
+    case Family::Transformer: {
+        const int taps = transformerTaps(object);
+        return recordedBox(object, -6.0, -9.0, 12.0 + qMax(0, taps - 2) * 3.0, 18.0);
+    }
+
+    case Family::Diode:
+        return recordedBox(object, -3.0, -7.5, 6.0, 15.0);
+
+    case Family::Rectifier:
+        return recordedBox(object, -7.5, -10.5, 15.0, 21.0);
+
+    case Family::Supply:
+        return recordedBox(object, -7.5, -10.5, 15.0, 21.0);
+
+    case Family::Battery:
+        return recordedBox(object, -4.5, -6.0, 9.0, 12.0);
+
+    case Family::Outlet:
+        return recordedBox(object, -4.5, -7.5, 9.0, 15.0);
+
     default:
         return QRectF(-3.0 * kUnit, 0,
                       (info.poles - 1) * pitchPx() + 6.0 * kUnit,
@@ -534,6 +571,60 @@ void drawDrive(QPainter* painter, const cad::Object& object)
     }
 }
 
+// Recorded symbol cell, in local pixels. Newly placed palette symbols store
+// the box centred on the origin; imported records keep the original offsets.
+QRectF recordedBox(const cad::Object& object, double defLeft, double defTop,
+                   double defWidth, double defHeight)
+{
+    if (object.boxWidth() > 0 && object.boxHeight() > 0) {
+        return QRectF(object.boxLeft() * kUnit, object.boxTop() * kUnit,
+                      object.boxWidth() * kUnit, object.boxHeight() * kUnit);
+    }
+    return QRectF(defLeft * kUnit, defTop * kUnit,
+                  defWidth * kUnit, defHeight * kUnit);
+}
+
+int transformerTaps(const cad::Object& object)
+{
+    return qBound(1, namedPinCount(object) / 2, 4);
+}
+
+// X positions of the winding taps, spread evenly across the winding bar.
+QVector<double> transformerTapXs(const QRectF& box, int taps)
+{
+    QVector<double> xs;
+    const double width = qMax(6.0 * kUnit, box.width() - 5.5 * kUnit);
+    const double left = box.center().x() - width / 2.0;
+    if (taps <= 1) {
+        xs.append(box.center().x());
+        return xs;
+    }
+    for (int i = 0; i < taps; ++i)
+        xs.append(left + width * i / (taps - 1));
+    return xs;
+}
+
+// Lead positions for power-supply symbols: all pins except the last (PE) are
+// split into an upper and a lower row.
+struct SupplyLeads
+{
+    QVector<double> top;
+    QVector<double> bottom;
+};
+
+SupplyLeads supplyLeads(const cad::Object& object, const QRectF& rect)
+{
+    SupplyLeads leads;
+    const int pins = qMax(2, namedPinCount(object));
+    const int branch = qMax(1, pins - 1);
+    const int topCount = (branch + 1) / 2;
+    for (int i = 0; i < topCount; ++i)
+        leads.top.append(rect.left() + (3.0 + 6.0 * i) * kUnit);
+    for (int i = 0; i < branch - topCount; ++i)
+        leads.bottom.append(rect.left() + (3.0 + 6.0 * i) * kUnit);
+    return leads;
+}
+
 void drawPowerFeed(QPainter* painter, const cad::Object& object, const Info& info)
 {
     const double top = 0.0;
@@ -581,72 +672,188 @@ void drawPowerFeed(QPainter* painter, const cad::Object& object, const Info& inf
 
 void drawTransformer(QPainter* painter, const cad::Object& object, const Info& info)
 {
-    Q_UNUSED(object)
-    const double count = info.poles;
-    const double width = (count - 1) * pitchPx() + 6.0 * kUnit;
-    const QRectF core(-width / 2.0, 6.0 * kUnit, 1.2 * kUnit, 6.0 * kUnit);
-    const double coilX = core.center().x();
+    Q_UNUSED(info)
+    const QRectF box = recordedBox(object, -6.0, -9.0, 12.0, 18.0);
+    const int taps = transformerTaps(object);
+    const QVector<double> xs = transformerTapXs(box, taps);
 
-    painter->drawLine(core.topLeft(), core.bottomLeft());
-    painter->drawLine(core.topRight(), core.bottomRight());
+    const double scale = box.height() / (18.0 * kUnit);
+    const double topBar = box.top() + 4.0 * kUnit * scale;
+    const double barHeight = 3.3 * kUnit * scale;
+    const double coreOne = box.top() + 8.0 * kUnit * scale;
+    const double coreTwo = box.top() + 9.0 * kUnit * scale;
+    const double bottomBar = box.top() + 10.0 * kUnit * scale;
+    const double leadTop = box.top() + 1.0 * kUnit * scale;
+    const double leadBottom = box.top() + 16.0 * kUnit * scale;
 
-    for (int i = 0; i < 3; ++i) {
-        const double y = 6.5 * kUnit + i * 1.6 * kUnit;
-        painter->drawArc(QRectF(coilX - 4.0 * kUnit, y, 3.0 * kUnit, 1.6 * kUnit),
-                         90 * 16, 180 * 16);
-        painter->drawArc(QRectF(coilX + 1.0 * kUnit, y, 3.0 * kUnit, 1.6 * kUnit),
-                         -90 * 16, 180 * 16);
+    const double barLeft = xs.first() - 0.45 * kUnit;
+    const double barRight = xs.last() + 0.45 * kUnit;
+    const QRectF topWinding(barLeft, topBar, barRight - barLeft, barHeight);
+    const QRectF bottomWinding(barLeft, bottomBar, barRight - barLeft, barHeight);
+    const QRectF firstCore(barLeft + 0.2 * kUnit, coreOne,
+                           barRight - barLeft - 0.4 * kUnit, 0.45 * kUnit);
+    const QRectF secondCore(barLeft + 0.2 * kUnit, coreTwo,
+                            barRight - barLeft - 0.4 * kUnit, 0.45 * kUnit);
+
+    painter->save();
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(0, 0, 0));
+    painter->drawRect(topWinding);
+    painter->drawRect(bottomWinding);
+    painter->drawRect(firstCore);
+    painter->drawRect(secondCore);
+    painter->restore();
+
+    for (double x : xs) {
+        painter->drawLine(QPointF(x, leadTop), QPointF(x, topBar));
+        painter->drawLine(QPointF(x, bottomBar + barHeight), QPointF(x, leadBottom));
     }
 }
 
-void drawDiode(QPainter* painter)
+void drawDiode(QPainter* painter, const cad::Object& object)
 {
-    drawPinStub(painter, 0, 0.0, 4.0 * kUnit);
-    drawPinStub(painter, 0, 8.0 * kUnit, spanPx());
+    const QRectF box = recordedBox(object, -3.0, -7.5, 6.0, 15.0);
+    const double cx = box.center().x();
+    const double scale = box.height() / (15.0 * kUnit);
+
+    const double leadTop = box.top() + 1.0 * kUnit * scale;
+    const double triangleTop = box.top() + 4.3 * kUnit * scale;
+    const double cathode = box.top() + 9.0 * kUnit * scale;
+    const double leadBottom = box.top() + 13.0 * kUnit * scale;
+    const double halfWidth = qMin(box.width() / 2.0, 2.7 * kUnit);
+
+    painter->drawLine(QPointF(cx, leadTop), QPointF(cx, triangleTop));
+
     QPolygonF triangle;
-    triangle << QPointF(-2.5 * kUnit, 4.0 * kUnit) << QPointF(2.5 * kUnit, 4.0 * kUnit)
-             << QPointF(0, 8.0 * kUnit);
+    triangle << QPointF(cx - halfWidth, triangleTop)
+             << QPointF(cx + halfWidth, triangleTop)
+             << QPointF(cx, cathode);
+    painter->save();
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(0, 0, 0));
     painter->drawPolygon(triangle);
-    painter->drawLine(QPointF(-2.5 * kUnit, 8.0 * kUnit), QPointF(2.5 * kUnit, 8.0 * kUnit));
+    painter->restore();
+
+    painter->drawLine(QPointF(cx - halfWidth, cathode),
+                      QPointF(cx + halfWidth, cathode));
+    painter->drawLine(QPointF(cx, cathode), QPointF(cx, leadBottom));
 }
 
-void drawRectifier(QPainter* painter)
+void drawRectifier(QPainter* painter, const cad::Object& object)
 {
-    const QRectF box(-3.0 * kUnit, 3.0 * kUnit, 6.0 * kUnit, 6.0 * kUnit);
-    painter->drawRect(box);
-    // Four diodes in a bridge, indicated by a diamond.
+    const QRectF box = recordedBox(object, -7.5, -10.5, 15.0, 21.0);
+    const QPointF centre = box.center();
+    const double halfWidth = qMin(box.width() / 2.0 + 1.5 * kUnit, 9.0 * kUnit);
+    const double halfHeight = qMin(box.height() / 2.0 - 4.5 * kUnit, 5.8 * kUnit);
+
+    painter->drawLine(QPointF(centre.x(), box.top() + 1.0 * kUnit),
+                      QPointF(centre.x(), centre.y() - halfHeight));
+    painter->drawLine(QPointF(centre.x(), centre.y() + halfHeight),
+                      QPointF(centre.x(), box.bottom() - 2.0 * kUnit));
+
     QPolygonF diamond;
-    diamond << QPointF(0, 4.0 * kUnit) << QPointF(2.0 * kUnit, 6.0 * kUnit)
-            << QPointF(0, 8.0 * kUnit) << QPointF(-2.0 * kUnit, 6.0 * kUnit);
+    diamond << QPointF(centre.x(), centre.y() - halfHeight)
+            << QPointF(centre.x() + halfWidth, centre.y())
+            << QPointF(centre.x(), centre.y() + halfHeight)
+            << QPointF(centre.x() - halfWidth, centre.y());
     painter->drawPolygon(diamond);
-    painter->drawLine(QPointF(0, 0), QPointF(0, 3.0 * kUnit));
-    painter->drawLine(QPointF(0, 9.0 * kUnit), QPointF(0, spanPx()));
+
+    // AC side of the bridge: the centre line runs past the diamond.
+    painter->drawLine(QPointF(centre.x() - halfWidth - 0.8 * kUnit, centre.y()),
+                      QPointF(centre.x() + halfWidth + 0.8 * kUnit, centre.y()));
+
+    // Rectifier diode inside the bridge.
+    const double anode = centre.x() - 1.9 * kUnit;
+    const double bar = centre.x() + 1.9 * kUnit;
+    const double half = 2.0 * kUnit;
+    QPolygonF diode;
+    diode << QPointF(anode, centre.y() - half) << QPointF(anode, centre.y() + half)
+          << QPointF(bar, centre.y());
+    painter->save();
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(0, 0, 0));
+    painter->drawPolygon(diode);
+    painter->restore();
+    painter->drawLine(QPointF(bar, centre.y() - half), QPointF(bar, centre.y() + half));
 }
 
-void drawSupply(QPainter* painter, const Info& info)
+void drawSupply(QPainter* painter, const cad::Object& object)
 {
-    const double width = info.poles > 1 ? (info.poles - 1) * pitchPx() : 0.0;
-    const QRectF box(-3.0 * kUnit, 3.0 * kUnit,
-                     width + 6.0 * kUnit, 6.0 * kUnit);
-    painter->drawRect(box);
-    painter->drawText(box, Qt::AlignCenter, QStringLiteral("~"));
+    const QRectF box = recordedBox(object, -7.5, -10.5, 15.0, 21.0);
+    const QRectF rect(box.left(), box.top() + 3.0 * kUnit,
+                      box.width(), qMin(12.0 * kUnit, box.height() - 3.0 * kUnit));
+
+    painter->drawRect(rect);
+    painter->drawLine(rect.topRight(), rect.bottomLeft());
+
+    // AC input mark (~) in the upper-left compartment.
+    const QPointF tilde(rect.left() + 2.0 * kUnit, rect.top() + 2.6 * kUnit);
+    const double wave = 1.6 * kUnit;
+    QPainterPath path(tilde);
+    path.cubicTo(tilde.x() + wave * 0.4, tilde.y() - wave,
+                 tilde.x() + wave * 0.9, tilde.y() - wave,
+                 tilde.x() + wave * 1.3, tilde.y());
+    path.cubicTo(tilde.x() + wave * 1.7, tilde.y() + wave,
+                 tilde.x() + wave * 2.2, tilde.y() + wave,
+                 tilde.x() + wave * 2.6, tilde.y());
+    painter->drawPath(path);
+
+    // DC output mark (=) in the lower-right compartment.
+    const double equalsY = rect.top() + 8.6 * kUnit;
+    const double equalsHalf = 1.6 * kUnit;
+    painter->drawLine(QPointF(rect.center().x() - equalsHalf, equalsY),
+                      QPointF(rect.center().x() + equalsHalf, equalsY));
+    painter->drawLine(QPointF(rect.center().x() - equalsHalf, equalsY + kUnit),
+                      QPointF(rect.center().x() + equalsHalf, equalsY + kUnit));
+
+    const SupplyLeads leads = supplyLeads(object, rect);
+    for (double x : leads.top)
+        painter->drawLine(QPointF(x, rect.top() - 3.0 * kUnit), QPointF(x, rect.top()));
+    for (double x : leads.bottom)
+        painter->drawLine(QPointF(x, rect.bottom()), QPointF(x, rect.bottom() + 3.0 * kUnit));
+
+    // Protective earth on the lower-left corner.
+    QString lastPin;
+    for (const QString& pin : object.pins) {
+        if (!pin.trimmed().isEmpty())
+            lastPin = pin.trimmed();
+    }
+    if (lastPin.compare(QStringLiteral("PE"), Qt::CaseInsensitive) == 0)
+        painter->drawLine(rect.bottomLeft(), rect.bottomLeft() + QPointF(0, 5.0 * kUnit));
 }
 
-void drawBattery(QPainter* painter)
+void drawBattery(QPainter* painter, const cad::Object& object)
 {
-    drawPinStub(painter, 0, 0.0, 4.0 * kUnit);
-    drawPinStub(painter, 0, 8.0 * kUnit, spanPx());
-    painter->drawLine(QPointF(-2.5 * kUnit, 4.0 * kUnit), QPointF(2.5 * kUnit, 4.0 * kUnit));
-    painter->drawLine(QPointF(-1.2 * kUnit, 6.0 * kUnit), QPointF(1.2 * kUnit, 6.0 * kUnit));
-    painter->drawLine(QPointF(-2.5 * kUnit, 8.0 * kUnit), QPointF(2.5 * kUnit, 8.0 * kUnit));
+    const QRectF box = recordedBox(object, -4.5, -6.0, 9.0, 12.0);
+    const double cx = box.center().x();
+    const double leadTop = box.top();
+    const double leadBottom = box.top() + 9.0 * kUnit;
+    const double longPlate = box.top() + 3.5 * kUnit;
+    const double shortPlate = box.top() + 5.3 * kUnit;
+
+    painter->drawLine(QPointF(cx, leadTop), QPointF(cx, leadBottom));
+    painter->drawLine(QPointF(cx - 3.0 * kUnit, longPlate),
+                      QPointF(cx + 3.0 * kUnit, longPlate));
+    painter->drawLine(QPointF(cx - 2.0 * kUnit, shortPlate),
+                      QPointF(cx + 2.0 * kUnit, shortPlate));
 }
 
-void drawOutlet(QPainter* painter)
+void drawOutlet(QPainter* painter, const cad::Object& object)
 {
-    const QRectF box(-3.0 * kUnit, 3.0 * kUnit, 6.0 * kUnit, 6.0 * kUnit);
-    painter->drawRect(box);
-    painter->drawEllipse(box.center(), 1.2 * kUnit, 1.2 * kUnit);
-    painter->drawLine(QPointF(0, 0), QPointF(0, 3.0 * kUnit));
+    const QRectF box = recordedBox(object, -4.5, -7.5, 9.0, 15.0);
+    const double cx = box.center().x();
+    const double cy = box.top() + 5.8 * kUnit;
+    const double radius = 2.9 * kUnit;
+
+    painter->drawLine(QPointF(cx, box.top()), QPointF(cx, cy - radius));
+    painter->drawLine(QPointF(cx, cy + radius), QPointF(cx, box.top() + 12.0 * kUnit));
+    painter->drawEllipse(QPointF(cx, cy), radius, radius);
+
+    // Three socket holes: two on the left, one on the right.
+    const double hole = 0.42 * kUnit;
+    painter->drawEllipse(QPointF(cx - 1.0 * kUnit, cy - 1.5 * kUnit), hole, hole);
+    painter->drawEllipse(QPointF(cx - 1.0 * kUnit, cy + 1.5 * kUnit), hole, hole);
+    painter->drawEllipse(QPointF(cx + 1.5 * kUnit, cy), hole, hole);
 }
 
 void drawContactForm(QPainter* painter, const Info& info)
@@ -775,6 +982,89 @@ void drawPinNames(QPainter* painter, const cad::Object& object, const Info& info
     const double above = -12.0;
     const double below = spanPx() + 1.0;
 
+    if (info.family == Family::Transformer) {
+        const QRectF box = symbolBox(object);
+        const int taps = transformerTaps(object);
+        const QVector<double> xs = transformerTapXs(box, taps);
+        for (int i = 0; i < taps && i < names.size(); ++i)
+            painter->drawText(QRectF(xs.at(i) - 8.0, box.top() - 13.0, 16.0, 11.0),
+                              Qt::AlignCenter, names.at(i));
+        for (int i = 0; i < taps && taps + i < names.size(); ++i)
+            painter->drawText(QRectF(xs.at(i) - 8.0, box.bottom() + 2.0, 16.0, 11.0),
+                              Qt::AlignCenter, names.at(taps + i));
+        return;
+    }
+
+    if (info.family == Family::Supply) {
+        const QRectF box = symbolBox(object);
+        const QRectF rect(box.left(), box.top() + 3.0 * kUnit,
+                          box.width(), qMin(12.0 * kUnit, box.height() - 3.0 * kUnit));
+        const SupplyLeads leads = supplyLeads(object, rect);
+        int index = 0;
+        for (double x : leads.top) {
+            if (index < names.size())
+                painter->drawText(QRectF(x - 8.0, rect.top() - 13.0, 16.0, 11.0),
+                                  Qt::AlignCenter, names.at(index));
+            ++index;
+        }
+        for (double x : leads.bottom) {
+            if (index < names.size())
+                painter->drawText(QRectF(x - 8.0, rect.bottom() + 2.0, 16.0, 11.0),
+                                  Qt::AlignCenter, names.at(index));
+            ++index;
+        }
+        if (index < names.size())
+            painter->drawText(QRectF(rect.left() - 20.0, rect.bottom() + 6.0, 16.0, 11.0),
+                              Qt::AlignCenter, names.at(index));
+        return;
+    }
+
+    if (info.family == Family::Battery) {
+        const QRectF box = symbolBox(object);
+        const double x = box.center().x() + 2.5 * kUnit;
+        if (names.size() > 0)
+            painter->drawText(QRectF(x, box.top() + 2.0 * kUnit, 12.0, 11.0),
+                              Qt::AlignLeft | Qt::AlignVCenter, names.at(0));
+        if (names.size() > 1)
+            painter->drawText(QRectF(x, box.top() + 4.2 * kUnit, 12.0, 11.0),
+                              Qt::AlignLeft | Qt::AlignVCenter, names.at(1));
+        return;
+    }
+
+    if (info.family == Family::Diode) {
+        const QRectF box = symbolBox(object);
+        const double cx = box.center().x();
+        const double scale = box.height() / (15.0 * kUnit);
+        if (names.size() > 0)
+            painter->drawText(QRectF(cx + 4.0, box.top() + 2.0 * kUnit * scale, 14.0, 11.0),
+                              Qt::AlignLeft | Qt::AlignVCenter, names.at(0));
+        if (names.size() > 1)
+            painter->drawText(QRectF(cx + 4.0, box.top() + 9.0 * kUnit * scale, 14.0, 11.0),
+                              Qt::AlignLeft | Qt::AlignVCenter, names.at(1));
+        return;
+    }
+
+    if (info.family == Family::Rectifier) {
+        const QRectF box = symbolBox(object);
+        const QPointF centre = box.center();
+        if (names.size() > 0)
+            painter->drawText(QRectF(centre.x() + 4.0, box.top() + 1.0 * kUnit, 14.0, 11.0),
+                              Qt::AlignLeft | Qt::AlignVCenter, names.at(0));
+        if (names.size() > 1)
+            painter->drawText(QRectF(centre.x() + 4.0, box.bottom() - 3.0 * kUnit, 14.0, 11.0),
+                              Qt::AlignLeft | Qt::AlignVCenter, names.at(1));
+        if (names.size() > 2)
+            painter->drawText(QRectF(box.left() - 6.0, centre.y() - 16.0, 14.0, 11.0),
+                              Qt::AlignRight | Qt::AlignVCenter, names.at(2));
+        if (names.size() > 3)
+            painter->drawText(QRectF(box.right() - 8.0, centre.y() - 16.0, 14.0, 11.0),
+                              Qt::AlignLeft | Qt::AlignVCenter, names.at(3));
+        return;
+    }
+
+    if (info.family == Family::Outlet)
+        return;
+
     if (info.family == Family::Motor) {
         for (int i = 0; i < names.size() && i < 4; ++i) {
             painter->drawText(QRectF(poleX(i) - 14.0, above, 28.0, 12.0),
@@ -807,6 +1097,9 @@ void drawPinNames(QPainter* painter, const cad::Object& object, const Info& info
 
 QRectF localBounds(const cad::Object& object)
 {
+    if (object.isWireGlyph())
+        return QRectF(-9, -9, 18, 18);
+
     if (object.isLine()) {
         const QPointF start(0, 0);
         const QPointF end((object.x2() - object.x()) * kUnit,
@@ -864,6 +1157,30 @@ void paintObject(QPainter* painter, const cad::Object& object, bool selected)
         painter->setPen(QPen(QColor(0, 120, 215), 1.2, Qt::DashLine));
         painter->setBrush(Qt::NoBrush);
         painter->drawRect(localBounds(object).adjusted(-2, -2, 2, 2));
+    }
+
+    if (object.isWireGlyph()) {
+        // Small cross-reference / connection marker from the drawing palette.
+        const bool marker = object.type >= 4011;
+        const QColor colour = marker ? QColor(251, 0, 0) : lineColor(object);
+        painter->setPen(QPen(colour, 1.8));
+        painter->setBrush(marker ? QBrush(colour) : QBrush(Qt::NoBrush));
+        if (marker) {
+            QPolygonF diamond;
+            diamond << QPointF(0, -6.0) << QPointF(6.0, 0)
+                    << QPointF(0, 6.0) << QPointF(-6.0, 0);
+            painter->drawPolygon(diamond);
+        } else {
+            const double dir = (object.type == 4003) ? 1.0 : -1.0;
+            painter->drawLine(QPointF(-6.0, -6.0 * dir), QPointF(6.0, 6.0 * dir));
+        }
+        if (!object.label.isEmpty()) {
+            painter->setPen(QColor(0, 0, 0));
+            painter->drawText(QRectF(-26.0, -18.0, 20.0, 12.0),
+                              Qt::AlignRight | Qt::AlignVCenter, object.label);
+        }
+        painter->restore();
+        return;
     }
 
     if (object.isLine()) {
@@ -927,19 +1244,19 @@ void paintObject(QPainter* painter, const cad::Object& object, bool selected)
         drawTransformer(painter, object, info);
         break;
     case Family::Diode:
-        drawDiode(painter);
+        drawDiode(painter, object);
         break;
     case Family::Rectifier:
-        drawRectifier(painter);
+        drawRectifier(painter, object);
         break;
     case Family::Supply:
-        drawSupply(painter, info);
+        drawSupply(painter, object);
         break;
     case Family::Battery:
-        drawBattery(painter);
+        drawBattery(painter, object);
         break;
     case Family::Outlet:
-        drawOutlet(painter);
+        drawOutlet(painter, object);
         break;
     case Family::Resistor:
         drawResistor(painter, info);

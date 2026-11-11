@@ -36,6 +36,14 @@ bool Object::isJunction() const
     return type == 4001;
 }
 
+bool Object::isWireGlyph() const
+{
+    // Palette records for drawing/wire marks are stored as lines whose second
+    // endpoint is the unset (0, 0). They are glyphs at the first endpoint, not
+    // wires running to the page origin.
+    return isLine() && x2() == 0 && y2() == 0 && (x() != 0 || y() != 0);
+}
+
 QString typeName(int type)
 {
     switch (type) {

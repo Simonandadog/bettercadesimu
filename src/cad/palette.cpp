@@ -58,6 +58,8 @@ Object PaletteItem::makeObject() const
     object.fields.reserve(fieldCount);
     for (int i = 0; i < fieldCount; ++i)
         object.fields.append(Field{});
+    object.fields[object.pinFlagCount + 4].value = -box.width() / 2;
+    object.fields[object.pinFlagCount + 5].value = -box.height() / 2;
     object.fields[object.pinFlagCount + 6].value = box.width();
     object.fields[object.pinFlagCount + 7].value = box.height();
     object.fields[object.pinFlagCount + 11].value = 1;

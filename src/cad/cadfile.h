@@ -48,6 +48,7 @@ struct Object {
     QString text() const { return tail(14).text; }
 
     bool isLine() const;
+    bool isWireGlyph() const;
     bool isText() const { return type == 8; }
     bool isJunction() const;
     bool isComponent() const { return !isLine() && !isText() && !isJunction(); }
