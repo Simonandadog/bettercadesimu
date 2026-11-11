@@ -44,6 +44,10 @@ public:
     bool insertPending() const { return m_hasPending; }
     void deleteSelection();
     void selectAll();
+    void copySelection();
+    void paste();
+    void duplicateSelection();
+    bool hasClipboard() const { return !m_clipboard.isEmpty(); }
 
     QUndoStack* undoStack() const { return m_undoStack; }
 
@@ -86,6 +90,8 @@ private:
 
     // Object positions when a drag begins, so the move can be undone.
     QList<QPair<int, QPointF>> m_dragStart;
+
+    QList<cad::Object> m_clipboard;
 };
 
 // Render a document to a PNG without opening a window. Used by --render and

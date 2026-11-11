@@ -150,6 +150,43 @@ void testDragUndo(ui::CanvasView& view)
     }
 }
 
+void testClipboard(ui::CanvasView& view)
+{
+    view.clearDocument();
+    view.insertObject(makeSymbol(30, 30));
+    CHECK(view.objects().size() == 1);
+
+    ui::CadItem* item = view.itemById(1);
+    CHECK(item != nullptr);
+    if (!item)
+        return;
+    item->setSelected(true);
+    view.copySelection();
+    CHECK(view.hasClipboard());
+
+    view.paste();
+    CHECK(view.objects().size() == 2);
+    CHECK(view.itemById(2) != nullptr);
+    if (const ui::CadItem* pasted = view.itemById(2)) {
+        CHECK(pasted->object().x() == 33);
+        CHECK(pasted->object().y() == 33);
+        CHECK(pasted->isSelected());
+    }
+
+    view.undoStack()->undo();
+    CHECK(view.objects().size() == 1);
+    view.undoStack()->redo();
+    CHECK(view.objects().size() == 2);
+    CHECK(view.itemById(2) != nullptr);
+
+    view.itemById(1)->setSelected(true);
+    view.itemById(2)->setSelected(true);
+    view.duplicateSelection();
+    CHECK(view.objects().size() == 4);
+    view.undoStack()->undo();
+    CHECK(view.objects().size() == 2);
+}
+
 void testCleanState(ui::CanvasView& view)
 {
     view.clearDocument();
@@ -176,6 +213,7 @@ int main(int argc, char* argv[])
     testAddUndoRedo(view);
     testDeleteUndo(view);
     testDragUndo(view);
+    testClipboard(view);
     testCleanState(view);
 
     if (g_failures > 0) {

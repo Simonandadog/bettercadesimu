@@ -23,6 +23,7 @@ Early work in progress. The viewer is usable and the editor core has landed:
 - Rubber-band selection in every direction, plus hover highlight.
 - Drag objects to move them (snapped to the grid) and <kbd>Del</kbd> to remove them.
 - Undo / redo for placement, movement and deletion (Ctrl+Z / Ctrl+Shift+Z).
+- Copy / paste / duplicate selected objects (Ctrl+C, Ctrl+V, Ctrl+D).
 - Symbol palette dock generated from the surveyed catalogue (18 sections,
   243 entries), with painted previews. Click an entry and then click the canvas
   to place it; double-click the entry to place it in the centre.

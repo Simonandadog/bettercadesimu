@@ -52,6 +52,46 @@ private:
     int m_id = -1;
 };
 
+class AddObjectsCommand : public QUndoCommand
+{
+public:
+    AddObjectsCommand(CanvasView* view, const QList<cad::Object>& objects)
+        : QUndoCommand(objects.size() == 1 ? QObject::tr("Add object")
+                                           : QObject::tr("Paste objects"))
+        , m_view(view)
+        , m_objects(objects)
+    {
+    }
+
+    void redo() override
+    {
+        if (m_ids.isEmpty()) {
+            for (const cad::Object& object : std::as_const(m_objects))
+                m_ids.append(m_view->appendObject(object));
+        } else {
+            for (int i = 0; i < m_objects.size() && i < m_ids.size(); ++i)
+                m_view->appendObject(m_objects.at(i), m_ids.at(i));
+        }
+
+        m_view->scene()->clearSelection();
+        for (int id : std::as_const(m_ids)) {
+            if (CadItem* item = m_view->itemById(id))
+                item->setSelected(true);
+        }
+    }
+
+    void undo() override
+    {
+        for (int id : std::as_const(m_ids))
+            m_view->removeObjectById(id);
+    }
+
+private:
+    CanvasView* m_view;
+    QList<cad::Object> m_objects;
+    QList<int> m_ids;
+};
+
 class RemoveObjectsCommand : public QUndoCommand
 {
 public:
@@ -298,6 +338,67 @@ void CanvasView::deleteSelection()
 
     m_undoStack->push(new RemoveObjectsCommand(this, objects));
     emit selectionChanged(nullptr);
+}
+
+void CanvasView::copySelection()
+{
+    m_clipboard.clear();
+    for (QGraphicsItem* item : m_scene->selectedItems()) {
+        if (auto* cadItem = qgraphicsitem_cast<CadItem*>(item))
+            m_clipboard.append(cadItem->object());
+    }
+
+    std::sort(m_clipboard.begin(), m_clipboard.end(),
+              [](const cad::Object& a, const cad::Object& b) { return a.id < b.id; });
+}
+
+void CanvasView::paste()
+{
+    if (m_clipboard.isEmpty())
+        return;
+
+    QList<cad::Object> copies = m_clipboard;
+    constexpr int offset = 3;
+    for (cad::Object& object : copies) {
+        object.id = -1;
+        const int base = object.pinFlagCount;
+        object.fields[base + 0].value += offset;
+        object.fields[base + 1].value += offset;
+        if (object.isLine() || object.isText()) {
+            object.fields[base + 2].value += offset;
+            object.fields[base + 3].value += offset;
+        }
+    }
+
+    m_undoStack->push(new AddObjectsCommand(this, copies));
+}
+
+void CanvasView::duplicateSelection()
+{
+    QList<cad::Object> copies;
+    for (QGraphicsItem* item : m_scene->selectedItems()) {
+        if (auto* cadItem = qgraphicsitem_cast<CadItem*>(item))
+            copies.append(cadItem->object());
+    }
+    if (copies.isEmpty())
+        return;
+
+    std::sort(copies.begin(), copies.end(),
+              [](const cad::Object& a, const cad::Object& b) { return a.id < b.id; });
+
+    constexpr int offset = 3;
+    for (cad::Object& object : copies) {
+        object.id = -1;
+        const int base = object.pinFlagCount;
+        object.fields[base + 0].value += offset;
+        object.fields[base + 1].value += offset;
+        if (object.isLine() || object.isText()) {
+            object.fields[base + 2].value += offset;
+            object.fields[base + 3].value += offset;
+        }
+    }
+
+    m_undoStack->push(new AddObjectsCommand(this, copies));
 }
 
 void CanvasView::selectAll()

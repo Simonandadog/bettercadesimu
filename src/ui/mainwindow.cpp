@@ -128,6 +128,26 @@ void MainWindow::createMenus()
 
     editMenu->addSeparator();
 
+    QAction* copyAction = editMenu->addAction(tr("&Copy"));
+    copyAction->setShortcut(QKeySequence::Copy);
+    copyAction->setStatusTip(tr("Copy the selected objects"));
+    connect(copyAction, &QAction::triggered, m_view, &CanvasView::copySelection);
+
+    QAction* pasteAction = editMenu->addAction(tr("&Paste"));
+    pasteAction->setShortcut(QKeySequence::Paste);
+    pasteAction->setStatusTip(tr("Paste the copied objects"));
+    connect(pasteAction, &QAction::triggered, m_view, &CanvasView::paste);
+    connect(editMenu, &QMenu::aboutToShow, pasteAction,
+            [this, pasteAction] { pasteAction->setEnabled(m_view->hasClipboard()); });
+
+    QAction* duplicateAction = editMenu->addAction(tr("D&uplicate"));
+    duplicateAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_D));
+    duplicateAction->setStatusTip(tr("Duplicate the selected objects"));
+    connect(duplicateAction, &QAction::triggered, m_view,
+            &CanvasView::duplicateSelection);
+
+    editMenu->addSeparator();
+
     QAction* deleteAction = editMenu->addAction(tr("&Delete"));
     deleteAction->setShortcut(QKeySequence::Delete);
     deleteAction->setStatusTip(tr("Delete the selected objects"));
