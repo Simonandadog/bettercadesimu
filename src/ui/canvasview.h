@@ -8,6 +8,7 @@
 #include <QSize>
 
 #include "cad/cadfile.h"
+#include "sim/simulator.h"
 
 class QGraphicsScene;
 class QKeyEvent;
@@ -62,6 +63,14 @@ public:
 
     QUndoStack* undoStack() const { return m_undoStack; }
 
+    // Relay-logic simulation.
+    bool simulationRunning() const { return m_simRunning; }
+    void setSimulationRunning(bool running);
+    void refreshSimulation();
+    void toggleSimulationObject(int objectId);
+    void resetSimulation();
+    const sim::State& simulationState() const { return m_simState; }
+
     // Low-level scene operations. Undo commands call these so they bypass the
     // undo stack; normal editing code should use the methods above.
     int appendObject(const cad::Object& object, int id = -1);
@@ -77,6 +86,8 @@ signals:
     void toolChanged(Tool tool);
     void objectActivated();
     void textInsertionRequested(const QPoint& position);
+    void simulationChanged(bool running);
+    void simulationWarnings(const QStringList& warnings);
 
 protected:
     void drawBackground(QPainter* painter, const QRectF& rect) override;
@@ -116,6 +127,10 @@ private:
     QList<QPair<int, QPointF>> m_dragStart;
 
     QList<cad::Object> m_clipboard;
+
+    sim::Simulator m_simulator;
+    sim::State m_simState;
+    bool m_simRunning = false;
 };
 
 // Render a document to a PNG without opening a window. Used by --render and
@@ -123,6 +138,7 @@ private:
 bool renderToPng(const cad::Document& document,
                  const QString& outputPath,
                  QSize maximumSize = {},
-                 QString* error = nullptr);
+                 QString* error = nullptr,
+                 const sim::State* simulation = nullptr);
 
 } // namespace ui

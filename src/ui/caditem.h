@@ -19,6 +19,10 @@ public:
     void setEditable(bool editable);
     bool isEditable() const { return m_editable; }
 
+    // Visual simulation highlight (live wire / energised load).
+    void setSimulated(bool simulated);
+    bool isSimulated() const { return m_simulated; }
+
     QRectF boundingRect() const override;
     QPainterPath shape() const override;
     void paint(QPainter* painter,
@@ -37,6 +41,7 @@ private:
     QRectF m_bounds;
     bool m_hovered = false;
     bool m_editable = false;
+    bool m_simulated = false;
 };
 
 } // namespace ui

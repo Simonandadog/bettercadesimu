@@ -29,6 +29,8 @@ target_include_directories(cadcore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 qt_add_executable(bettercadesimu
     src/main.cpp
+    src/sim/simulator.cpp
+    src/sim/simulator.h
     src/ui/caditem.cpp
     src/ui/caditem.h
     src/ui/canvasview.cpp
@@ -59,6 +61,8 @@ if(BUILD_TESTING)
 
     add_executable(canvas_edit_test
         tests/canvas_edit_test.cpp
+        src/sim/simulator.cpp
+        src/sim/simulator.h
         src/ui/caditem.cpp
         src/ui/caditem.h
         src/ui/canvasview.cpp
@@ -69,5 +73,17 @@ if(BUILD_TESTING)
     target_link_libraries(canvas_edit_test PRIVATE cadcore Qt6::Widgets)
     add_test(NAME canvas_edit_test COMMAND canvas_edit_test)
     set_tests_properties(canvas_edit_test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+    add_executable(simulation_test
+        tests/simulation_test.cpp
+        src/sim/simulator.cpp
+        src/sim/simulator.h
+        src/ui/symbols.cpp
+        src/ui/symbols.h
+    )
+    target_link_libraries(simulation_test PRIVATE cadcore Qt6::Widgets)
+    add_test(NAME simulation_test COMMAND simulation_test)
+    set_tests_properties(simulation_test PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()

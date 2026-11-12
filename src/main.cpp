@@ -7,6 +7,7 @@
 #include "cad/cadfile.h"
 #include "cad/palette.h"
 #include "cad/project.h"
+#include "sim/simulator.h"
 #include "ui/canvasview.h"
 #include "ui/mainwindow.h"
 #include "ui/sheet.h"
@@ -160,11 +161,20 @@ int main(int argc, char* argv[])
         QStringLiteral("save-project"),
         QStringLiteral("Convert a .cad document to the native JSON project format."),
         QStringLiteral("output.bcs"));
+    QCommandLineOption simulateOption(
+        QStringLiteral("simulate"),
+        QStringLiteral("Solve the circuit before --render and highlight active parts."));
+    QCommandLineOption pressOption(
+        QStringLiteral("press"),
+        QStringLiteral("Operate the push button or switch with this object ID (repeatable)."),
+        QStringLiteral("id"));
     parser.addOption(dumpOption);
     parser.addOption(renderOption);
     parser.addOption(paletteOption);
     parser.addOption(paletteSheetOption);
     parser.addOption(saveProjectOption);
+    parser.addOption(simulateOption);
+    parser.addOption(pressOption);
     parser.addPositionalArgument(QStringLiteral("file"),
                                  QStringLiteral("A .cad or .bcs document to open."));
 
@@ -244,8 +254,26 @@ int main(int argc, char* argv[])
             return 0;
         }
 
+        sim::State simulationState;
+        bool simulated = false;
+        if (parser.isSet(simulateOption)) {
+            sim::Simulator simulator;
+            simulator.setObjects(project.objects);
+            for (const QString& value : parser.values(pressOption)) {
+                bool ok = false;
+                const int id = value.toInt(&ok);
+                if (ok)
+                    simulator.toggle(id);
+            }
+            simulationState = simulator.compute();
+            simulated = true;
+            for (const QString& warning : simulationState.warnings)
+                writeError(warning);
+        }
+
         const QString output = parser.value(renderOption);
-        if (!ui::renderToPng(document, output, {}, &error)) {
+        if (!ui::renderToPng(document, output, {}, &error,
+                             simulated ? &simulationState : nullptr)) {
             writeError(error);
             return 1;
         }

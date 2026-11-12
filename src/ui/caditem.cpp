@@ -71,13 +71,21 @@ void CadItem::paint(QPainter* painter,
 {
     Q_UNUSED(option)
     Q_UNUSED(widget)
-    ui::paintObject(painter, m_object, isSelected() || m_hovered);
+    ui::paintObject(painter, m_object, isSelected() || m_hovered, m_simulated);
 }
 
 void CadItem::setEditable(bool editable)
 {
     m_editable = editable;
     setFlag(ItemIsMovable, editable);
+}
+
+void CadItem::setSimulated(bool simulated)
+{
+    if (m_simulated == simulated)
+        return;
+    m_simulated = simulated;
+    update();
 }
 
 void CadItem::setObject(const cad::Object& object)

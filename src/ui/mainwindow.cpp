@@ -244,6 +244,39 @@ void MainWindow::createMenus()
                     m_view->insertText(text, position);
             });
 
+    QMenu* simulationMenu = menuBar()->addMenu(tr("Si&mulation"));
+
+    QAction* runSimulationAction = simulationMenu->addAction(tr("&Run"));
+    runSimulationAction->setCheckable(true);
+    runSimulationAction->setShortcut(QKeySequence(Qt::Key_F5));
+    runSimulationAction->setStatusTip(tr("Start or stop the relay-logic simulation"));
+    connect(runSimulationAction, &QAction::toggled, m_view, &CanvasView::setSimulationRunning);
+
+    QAction* resetSimulationAction = simulationMenu->addAction(tr("&Reset Switches"));
+    resetSimulationAction->setShortcut(QKeySequence(Qt::Key_F6));
+    resetSimulationAction->setStatusTip(tr("Release all push buttons and switches"));
+    connect(resetSimulationAction, &QAction::triggered, m_view, &CanvasView::resetSimulation);
+    connect(simulationMenu, &QMenu::aboutToShow, resetSimulationAction,
+            [this, resetSimulationAction] {
+                resetSimulationAction->setEnabled(m_view->simulationRunning());
+            });
+
+    connect(m_view, &CanvasView::simulationChanged, this,
+            [this, runSimulationAction](bool running) {
+                runSimulationAction->setChecked(running);
+                runSimulationAction->setText(running ? tr("&Stop") : tr("&Run"));
+                statusBar()->showMessage(
+                    running ? tr("Simulation running — click switches and push buttons.")
+                            : tr("Simulation stopped."),
+                    5000);
+            });
+
+    connect(m_view, &CanvasView::simulationWarnings, this,
+            [this](const QStringList& warnings) {
+                if (!warnings.isEmpty())
+                    statusBar()->showMessage(warnings.join(QLatin1Char(' ')), 8000);
+            });
+
     QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
     QAction* zoomInAction = viewMenu->addAction(tr("Zoom &In"));
     zoomInAction->setShortcut(QKeySequence::ZoomIn);

@@ -641,6 +641,171 @@ SupplyLeads supplyLeads(const cad::Object& object, const QRectF& rect)
     return leads;
 }
 
+// Two-terminal ladder symbol: the first half of the named pins is on top, the
+// rest below, one pole every pitch units.
+QVector<QPointF> ladderPins(int count, int topCount, double span)
+{
+    QVector<QPointF> points;
+    topCount = qBound(0, topCount, count);
+    for (int i = 0; i < topCount; ++i)
+        points.append(QPointF(poleX(i), 0));
+    for (int i = topCount; i < count; ++i)
+        points.append(QPointF(poleX(i - topCount), span));
+    return points;
+}
+
+} // namespace
+
+QVector<QPointF> terminalPositions(const cad::Object& object)
+{
+    if (object.isLine() || object.isText() || object.isJunction() || object.isWireGlyph())
+        return {};
+
+    const Info info = describe(object);
+    const int count = namedPinCount(object);
+    if (count <= 0)
+        return {};
+
+    switch (info.family) {
+    case Family::PowerFeed:
+        return ladderPins(count, count, spanPx());
+
+    case Family::Fuse:
+    case Family::FuseSwitch:
+    case Family::Breaker:
+    case Family::Differential:
+    case Family::Contactor:
+    case Family::Switch: {
+        const int poles = qMax(1, info.poles);
+        return ladderPins(count, poles, spanPx());
+    }
+
+    case Family::Contact:
+    case Family::PushButton: {
+        const int poles = qMax(1, info.twoWay ? 2 : 1);
+        // Changeover forms carry an extra common terminal; keep the extra pins
+        // on the top row so they still line up with the drawn poles.
+        const int topCount = qMin(count, qMax(poles, (count + 1) / 2));
+        return ladderPins(count, topCount, spanPx());
+    }
+
+    case Family::Motor:
+        return ladderPins(count, count, spanPx());
+
+    case Family::Coil:
+    case Family::Lamp:
+    case Family::Timer: {
+        QVector<QPointF> points;
+        points.append(QPointF(0, 0));
+        if (count > 1)
+            points.append(QPointF(0, spanPx()));
+        for (int i = 2; i < count; ++i)
+            points.append(QPointF(poleX(i - 1), spanPx()));
+        return points;
+    }
+
+    case Family::Transformer: {
+        const QRectF box = recordedBox(object, -6.0, -9.0, 12.0, 18.0);
+        const double scale = box.height() / (18.0 * kUnit);
+        const double leadTop = box.top() + 1.0 * kUnit * scale;
+        const double leadBottom = box.top() + 16.0 * kUnit * scale;
+        const int taps = transformerTaps(object);
+        const QVector<double> xs = transformerTapXs(box, taps);
+        QVector<QPointF> points;
+        for (int i = 0; i < count; ++i) {
+            const int row = i / taps;
+            const int column = i % taps;
+            const double x = xs.at(qBound(0, column, taps - 1));
+            points.append(QPointF(x, row == 0 ? leadTop : leadBottom));
+        }
+        return points;
+    }
+
+    case Family::Supply: {
+        const QRectF box = recordedBox(object, -7.5, -10.5, 15.0, 21.0);
+        const QRectF rect(box.left(), box.top() + 3.0 * kUnit,
+                          box.width(), qMin(12.0 * kUnit, box.height() - 3.0 * kUnit));
+        const SupplyLeads leads = supplyLeads(object, rect);
+        QVector<QPointF> points;
+        for (double x : leads.top)
+            points.append(QPointF(x, rect.top() - 3.0 * kUnit));
+        for (double x : leads.bottom)
+            points.append(QPointF(x, rect.bottom() + 3.0 * kUnit));
+        while (points.size() < count)
+            points.append(rect.bottomLeft() + QPointF(0, 5.0 * kUnit));
+        points.resize(count);
+        return points;
+    }
+
+    case Family::Battery: {
+        const QRectF box = recordedBox(object, -4.5, -6.0, 9.0, 12.0);
+        QVector<QPointF> points;
+        points.append(QPointF(box.center().x(), box.top()));
+        if (count > 1)
+            points.append(QPointF(box.center().x(), box.top() + 9.0 * kUnit));
+        return points;
+    }
+
+    case Family::Outlet: {
+        const QRectF box = recordedBox(object, -4.5, -7.5, 9.0, 15.0);
+        QVector<QPointF> points;
+        points.append(QPointF(box.center().x(), box.top()));
+        if (count > 1)
+            points.append(QPointF(box.center().x(), box.top() + 12.0 * kUnit));
+        return points;
+    }
+
+    case Family::Diode: {
+        const QRectF box = recordedBox(object, -3.0, -7.5, 6.0, 15.0);
+        const double scale = box.height() / (15.0 * kUnit);
+        QVector<QPointF> points;
+        points.append(QPointF(box.center().x(), box.top() + 1.0 * kUnit * scale));
+        if (count > 1)
+            points.append(QPointF(box.center().x(), box.top() + 13.0 * kUnit * scale));
+        points.resize(count);
+        return points;
+    }
+
+    case Family::Rectifier: {
+        const QRectF box = recordedBox(object, -7.5, -10.5, 15.0, 21.0);
+        QVector<QPointF> points;
+        points.append(QPointF(box.center().x(), box.top() + 1.0 * kUnit));
+        if (count > 1)
+            points.append(QPointF(box.center().x(), box.bottom() - 2.0 * kUnit));
+        points.resize(count);
+        return points;
+    }
+
+    case Family::Resistor:
+        return ladderPins(count, qMax(1, info.poles), spanPx());
+
+    case Family::Busbar:
+        return ladderPins(count, count, spanPx());
+
+    case Family::Terminal:
+    case Family::Plc:
+    case Family::Logic:
+    case Family::Analogue:
+    case Family::Actuator:
+    case Family::Drive: {
+        const QRectF box = symbolBox(object);
+        QVector<QPointF> points;
+        points.append(QPointF(box.center().x(), box.top()));
+        if (count > 1)
+            points.append(QPointF(box.center().x(), box.bottom()));
+        while (points.size() < count)
+            points.append(QPointF(box.left(), box.top() + points.size() * pitchPx()));
+        points.resize(count);
+        return points;
+    }
+
+    case Family::Unknown:
+        break;
+    }
+
+    return ladderPins(count, qMax(1, count / 2), spanPx());
+}
+
 void drawPowerFeed(QPainter* painter, const cad::Object& object, const Info& info)
 {
     const double top = 0.0;
@@ -1109,8 +1274,6 @@ void drawPinNames(QPainter* painter, const cad::Object& object, const Info& info
     }
 }
 
-} // namespace
-
 QRectF baseLocalBounds(const cad::Object& object)
 {
     if (object.isWireGlyph())
@@ -1187,7 +1350,8 @@ QColor symbolColor(const cad::Object& object)
     return QColor(0, 0, 0);
 }
 
-void paintObject(QPainter* painter, const cad::Object& object, bool selected)
+void paintObject(QPainter* painter, const cad::Object& object, bool selected,
+                 bool simulated)
 {
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
@@ -1196,6 +1360,23 @@ void paintObject(QPainter* painter, const cad::Object& object, bool selected)
         painter->setPen(QPen(QColor(0, 120, 215), 1.2, Qt::DashLine));
         painter->setBrush(Qt::NoBrush);
         painter->drawRect(localBounds(object).adjusted(-2, -2, 2, 2));
+    }
+
+    if (simulated) {
+        if (object.isLine() && !object.isWireGlyph()) {
+            // Glow underneath a live conductor.
+            QPen glow(QColor(0, 175, 70, 110), 7.0);
+            glow.setCapStyle(Qt::RoundCap);
+            painter->setPen(glow);
+            painter->drawLine(QPointF(0, 0),
+                              QPointF((object.x2() - object.x()) * kUnit,
+                                      (object.y2() - object.y()) * kUnit));
+        } else if (!object.isText() && !object.isJunction() && !object.isWireGlyph()) {
+            painter->setPen(QPen(QColor(0, 150, 60), 2.0));
+            painter->setBrush(QColor(0, 180, 80, 45));
+            painter->drawRoundedRect(localBounds(object).adjusted(-1, -1, 1, 1), 4, 4);
+            painter->setBrush(Qt::NoBrush);
+        }
     }
 
     if (object.isWireGlyph()) {

@@ -44,8 +44,13 @@ Early work in progress. The viewer is usable and the editor core has landed:
   palette, rendering per-section artwork proof sheets, and converting `.cad`
   files to the native project format.
 - Drag-and-drop and recent-files support.
+- Relay-logic simulation: press <kbd>F5</kbd> to run, click push buttons and
+  switches to operate them, and <kbd>F6</kbd> to release them. Live wires and
+  energised coils, lamps and motors are highlighted; label-matched contacts
+  follow their contactor/relay coils, including seal-in latches.
+- `examples/latching-start.bcs` is a ready-made start/stop station to try it on.
 
-Simulation and the rest of the catalogue come next.
+Three-phase power flow, timers, PLC logic and the rest of the catalogue come next.
 
 ## Requirements
 
@@ -107,6 +112,26 @@ Convert a `.cad` document to the native JSON project format (also accepts a
 ```sh
 ./build/bettercadesimu --save-project out.bcs "path/to/schematic"
 ```
+
+## Simulation
+
+Press <kbd>F5</kbd> (or choose **Simulation → Run**) to build the circuit and
+solve it. While running:
+
+- Click a push button or manual switch to operate it; <kbd>F6</kbd> releases
+  every button and switch.
+- Wires that carry a live or return rail glow green, and energised loads
+  (coils, lamps, motors, timers, resistors) get a green outline.
+- Contactors and relays are linked by their reference label: a coil labelled
+  `-K1` drives every contact labelled `-K1`. Normally-closed contacts invert
+  the action. Coil state is retained between solves, so a seal-in contact keeps
+  a contactor latched after the start button is released.
+- Power comes from the phase/neutral feed symbols, 3014/3018 supplies and
+  3019 batteries. The solver reports when it cannot find a live or return rail.
+
+This first version models single-phase control circuits and uses a simplified
+phase/neutral reachability check for three-phase motors. Full three-phase power
+flow, timer delays, PLC blocks and drives are still to come.
 
 ## Native project format
 
@@ -182,8 +207,10 @@ pin; additional poles sit 6 units to the right.
 
 ```
 src/cad/        format parser, project model and palette
+src/sim/        relay-logic connectivity and simulation
 src/ui/         Qt canvas, symbol painting, main window
-tests/          parser, project and canvas-editing tests
+examples/       sample .bcs schematics
+tests/          parser, project, canvas-editing and simulation tests
 ```
 
 ## Licence

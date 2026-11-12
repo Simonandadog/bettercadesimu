@@ -2,8 +2,10 @@
 
 #include <QColor>
 #include <QPainter>
+#include <QPointF>
 #include <QRectF>
 #include <QString>
+#include <QVector>
 
 #include "cad/cadfile.h"
 
@@ -22,6 +24,12 @@ QRectF localBounds(const cad::Object& object);
 QColor lineColor(const cad::Object& object);
 QColor symbolColor(const cad::Object& object);
 
-void paintObject(QPainter* painter, const cad::Object& object, bool selected);
+// Connection points of the named pins, in the item's local pixel coordinates
+// before rotation. The order matches object.pins with the empty entries removed.
+QVector<QPointF> terminalPositions(const cad::Object& object);
+
+// `simulated` highlights a live wire or an energised load. It is purely visual.
+void paintObject(QPainter* painter, const cad::Object& object, bool selected,
+                 bool simulated = false);
 
 } // namespace ui

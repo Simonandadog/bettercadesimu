@@ -293,6 +293,8 @@ CanvasView::CanvasView(QWidget* parent)
     connect(m_scene, &QGraphicsScene::selectionChanged, this, &CanvasView::emitSelection);
     connect(m_undoStack, &QUndoStack::indexChanged, this, [this] {
         updateSceneRect();
+        if (m_simRunning)
+            refreshSimulation();
         emit documentEdited();
     });
 
@@ -329,6 +331,11 @@ void CanvasView::setObjects(const QList<cad::Object>& objects)
         bounds = QRectF(0, 0, 400 * kUnit, 300 * kUnit);
     m_scene->setSceneRect(bounds.adjusted(-60, -60, 60, 60));
     zoomAll();
+
+    if (m_simRunning) {
+        m_simulator.reset();
+        refreshSimulation();
+    }
 }
 
 void CanvasView::addCadItem(const cad::Object& object)
@@ -423,9 +430,64 @@ void CanvasView::clearDocument()
     m_undoStack->clear();
     m_dragStart.clear();
     m_wireActive = false;
+    m_simState = {};
     resetTransform();
     cancelInsert();
     m_nextId = 1;
+}
+
+void CanvasView::setSimulationRunning(bool running)
+{
+    if (m_simRunning == running)
+        return;
+
+    m_simRunning = running;
+    if (running) {
+        m_simulator.setObjects(objects());
+        m_simulator.reset();
+        refreshSimulation();
+    } else {
+        for (QGraphicsItem* item : m_scene->items()) {
+            if (auto* cadItem = qgraphicsitem_cast<CadItem*>(item))
+                cadItem->setSimulated(false);
+        }
+        m_simState = {};
+        emit simulationWarnings({});
+    }
+
+    emit simulationChanged(m_simRunning);
+}
+
+void CanvasView::refreshSimulation()
+{
+    if (!m_simRunning)
+        return;
+
+    m_simulator.setObjects(objects());
+    m_simState = m_simulator.compute();
+
+    for (QGraphicsItem* item : m_scene->items()) {
+        if (auto* cadItem = qgraphicsitem_cast<CadItem*>(item))
+            cadItem->setSimulated(m_simState.highlighted.contains(cadItem->object().id));
+    }
+
+    emit simulationWarnings(m_simState.warnings);
+}
+
+void CanvasView::toggleSimulationObject(int objectId)
+{
+    if (!m_simRunning)
+        return;
+    m_simulator.toggle(objectId);
+    refreshSimulation();
+}
+
+void CanvasView::resetSimulation()
+{
+    if (!m_simRunning)
+        return;
+    m_simulator.resetManual();
+    refreshSimulation();
 }
 
 void CanvasView::insertObject(cad::Object object)
@@ -807,6 +869,16 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
         return;
     }
 
+    if (m_simRunning && event->button() == Qt::LeftButton && m_tool == Tool::Select) {
+        if (auto* cadItem = qgraphicsitem_cast<CadItem*>(itemAt(event->pos()))) {
+            if (m_simulator.isToggleable(cadItem->object().id)) {
+                toggleSimulationObject(cadItem->object().id);
+                event->accept();
+                return;
+            }
+        }
+    }
+
     QGraphicsView::mousePressEvent(event);
 
     if (event->button() == Qt::LeftButton) {
@@ -916,7 +988,8 @@ void CanvasView::keyPressEvent(QKeyEvent* event)
 bool renderToPng(const cad::Document& document,
                  const QString& outputPath,
                  QSize maximumSize,
-                 QString* error)
+                 QString* error,
+                 const sim::State* simulation)
 {
     QGraphicsScene scene;
     scene.setBackgroundBrush(QColor(251, 251, 251));
@@ -924,7 +997,10 @@ bool renderToPng(const cad::Document& document,
     for (const cad::Object& object : document.objects) {
         if (object.type <= 0)
             continue;
-        scene.addItem(new CadItem(object));
+        auto* item = new CadItem(object);
+        if (simulation && simulation->highlighted.contains(object.id))
+            item->setSimulated(true);
+        scene.addItem(item);
     }
 
     QRectF source = scene.itemsBoundingRect();

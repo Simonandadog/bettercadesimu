@@ -47,6 +47,46 @@ cad::Object makeSymbol(int x, int y)
     return object;
 }
 
+cad::Object makePart(int id, int type, const QString& label, const QStringList& pins,
+                     int x, int y, int width = 6, int height = 15)
+{
+    cad::Object object;
+    object.id = id;
+    object.type = type;
+    object.label = label;
+    object.pins = pins;
+    object.pinFlagCount = qMax(cad::kMinPinFlags, pins.size());
+    object.typeParts << QString::number(type) << label << QString();
+    object.typeParts += pins;
+    for (int i = 0; i < object.pinFlagCount + cad::kTailFields; ++i)
+        object.fields.append(cad::Field{});
+    object.fields[object.pinFlagCount + 0].value = x;
+    object.fields[object.pinFlagCount + 1].value = y;
+    object.fields[object.pinFlagCount + 2].value = x;
+    object.fields[object.pinFlagCount + 3].value = y;
+    object.fields[object.pinFlagCount + 4].value = -width / 2;
+    object.fields[object.pinFlagCount + 5].value = -height / 2;
+    object.fields[object.pinFlagCount + 6].value = width;
+    object.fields[object.pinFlagCount + 7].value = height;
+    object.fields[object.pinFlagCount + 11].value = 1;
+    return object;
+}
+
+cad::Object makeSegment(int id, int x1, int y1, int x2, int y2)
+{
+    cad::Object object;
+    object.id = id;
+    object.type = 4000;
+    object.pinFlagCount = cad::kMinPinFlags;
+    for (int i = 0; i < cad::kFieldCount; ++i)
+        object.fields.append(cad::Field{});
+    object.fields[cad::kMinPinFlags + 0].value = x1;
+    object.fields[cad::kMinPinFlags + 1].value = y1;
+    object.fields[cad::kMinPinFlags + 2].value = x2;
+    object.fields[cad::kMinPinFlags + 3].value = y2;
+    return object;
+}
+
 void sendMouse(QWidget* target, QEvent::Type type, const QPoint& position,
                Qt::MouseButton button, Qt::MouseButtons buttons)
 {
@@ -397,6 +437,38 @@ void testRotation(ui::CanvasView& view)
     CHECK(view.undoStack()->count() > count);
 }
 
+void testSimulation(ui::CanvasView& view)
+{
+    view.clearDocument();
+
+    view.appendObject(makePart(1, 3000, QString(), {QStringLiteral("L1")}, 30, 30), 1);
+    view.appendObject(makePart(2, 8000, QStringLiteral("-S1"),
+                               {QStringLiteral("13"), QStringLiteral("14")}, 75, 30), 2);
+    view.appendObject(makePart(3, 9000, QStringLiteral("-K1"),
+                               {QStringLiteral("A1"), QStringLiteral("A2")}, 75, 42), 3);
+    view.appendObject(makePart(4, 3001, QString(), {QStringLiteral("N")}, 165, 54), 4);
+    view.appendObject(makeSegment(10, 30, 30, 75, 30), 10);
+    view.appendObject(makeSegment(11, 75, 54, 165, 54), 11);
+
+    view.setSimulationRunning(true);
+    CHECK(view.simulationRunning());
+    CHECK(!view.simulationState().activeLoads.value(3, false));
+    CHECK(!view.itemById(3)->isSimulated());
+
+    view.toggleSimulationObject(2);
+    CHECK(view.simulationState().activeLoads.value(3, false));
+    CHECK(view.itemById(3)->isSimulated());
+    CHECK(view.itemById(10)->isSimulated());
+
+    view.resetSimulation();
+    CHECK(!view.simulationState().activeLoads.value(3, false));
+
+    view.setSimulationRunning(false);
+    CHECK(!view.simulationRunning());
+    CHECK(!view.itemById(3)->isSimulated());
+    CHECK(!view.itemById(10)->isSimulated());
+}
+
 void testCleanState(ui::CanvasView& view)
 {
     view.clearDocument();
@@ -429,6 +501,7 @@ int main(int argc, char* argv[])
     testMiddleClickPan(view);
     testEditObject(view);
     testRotation(view);
+    testSimulation(view);
     testCleanState(view);
 
     if (g_failures > 0) {
