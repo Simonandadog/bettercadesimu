@@ -662,6 +662,13 @@ QVector<QPointF> terminalPositions(const cad::Object& object)
         return {};
 
     const Info info = describe(object);
+
+    // Power feeds are drawn from their pole count and often carry no pin
+    // names at all (the palette entries have none), so derive their terminals
+    // from the number of poles instead of from the pin-name list.
+    if (info.family == Family::PowerFeed)
+        return ladderPins(qMax(1, info.poles), qMax(1, info.poles), spanPx());
+
     const int count = namedPinCount(object);
     if (count <= 0)
         return {};

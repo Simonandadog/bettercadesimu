@@ -48,7 +48,9 @@ Early work in progress. The viewer is usable and the editor core has landed:
   switches to operate them, and <kbd>F6</kbd> to release them. Live wires and
   energised coils, lamps and motors are highlighted; label-matched contacts
   follow their contactor/relay coils, including seal-in latches.
-- `examples/latching-start.bcs` is a ready-made start/stop station to try it on.
+- Ready-made circuits in `examples/`: `latching-start.bcs` (control-only
+  start/stop station) and `dol-starter.bcs` (three-phase direct-on-line motor
+  starter with a seal-in contactor).
 
 Three-phase power flow, timers, PLC logic and the rest of the catalogue come next.
 

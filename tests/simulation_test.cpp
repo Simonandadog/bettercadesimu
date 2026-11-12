@@ -94,6 +94,18 @@ void testTerminals()
     CHECK(coil.size() == 2);
     CHECK(closePoint(coil.value(0), QPointF(0, 0)));
     CHECK(closePoint(coil.value(1), QPointF(0, 12.0 * ui::kUnit)));
+
+    // Palette power feeds carry no pin names; their terminals come from the
+    // pole count so that wires can still be attached to them.
+    const QVector<QPointF> feed = ui::terminalPositions(
+        makeComponent(4, 3000, QString(), {}, 10, 10));
+    CHECK(feed.size() == 1);
+    CHECK(closePoint(feed.value(0), QPointF(0, 0)));
+
+    const QVector<QPointF> threePhase = ui::terminalPositions(
+        makeComponent(5, 3004, QString(), {}, 10, 10));
+    CHECK(threePhase.size() == 3);
+    CHECK(closePoint(threePhase.value(2), QPointF(12.0 * ui::kUnit, 0)));
 }
 
 void testButtonAndContactor()
@@ -211,6 +223,77 @@ void testRotationallyPlacedCoil()
     CHECK(state.activeLoads.value(2, false));
 }
 
+void testThreePhaseMotor()
+{
+    // Direct-on-line starter: three phase feeds -> fuse -> contactor -> motor,
+    // with a start/stop station driving the contactor coil.
+    QList<cad::Object> objects;
+    for (int phase = 0; phase < 3; ++phase) {
+        cad::Object feed = makeComponent(1 + phase, 3000, QString(),
+                                         {QStringLiteral("L%1").arg(phase + 1)},
+                                         30 + phase * 6, 30);
+        feed.rotation = 180;
+        objects.append(feed);
+    }
+
+    objects.append(makeComponent(4, 5003, QStringLiteral("-F1"),
+                                 {QStringLiteral("1"), QStringLiteral("3"),
+                                  QStringLiteral("5"), QStringLiteral("2"),
+                                  QStringLiteral("4"), QStringLiteral("6")},
+                                 30, 42, 18, 15));
+    objects.append(makeComponent(5, 2001, QStringLiteral("-KM"),
+                                 {QStringLiteral("1"), QStringLiteral("3"),
+                                  QStringLiteral("5"), QStringLiteral("2"),
+                                  QStringLiteral("4"), QStringLiteral("6")},
+                                 30, 54, 17, 15));
+    objects.append(makeComponent(6, 1000, QStringLiteral("-M1"),
+                                 {QStringLiteral("U1"), QStringLiteral("V1"),
+                                  QStringLiteral("W1"), QStringLiteral("PE")},
+                                 30, 66, 24, 24));
+
+    objects.append(makeComponent(20, 3000, QString(), {QStringLiteral("L1")}, 100, 30));
+    objects.append(makeComponent(21, 8001, QStringLiteral("-S1"),
+                                 {QStringLiteral("11"), QStringLiteral("12")}, 100, 42));
+    objects.append(makeComponent(22, 8000, QStringLiteral("-S2"),
+                                 {QStringLiteral("13"), QStringLiteral("14")}, 120, 54));
+    objects.append(makeComponent(23, 7000, QStringLiteral("-KM"),
+                                 {QStringLiteral("13"), QStringLiteral("14")}, 140, 54));
+    objects.append(makeComponent(24, 9000, QStringLiteral("-KM"),
+                                 {QStringLiteral("A1"), QStringLiteral("A2")}, 120, 66, 9, 15));
+    objects.append(makeComponent(25, 3001, QString(), {QStringLiteral("N")}, 120, 78));
+
+    objects.append(makeWire(30, 30, 30, 30, 42));
+    objects.append(makeWire(31, 36, 30, 36, 42));
+    objects.append(makeWire(32, 42, 30, 42, 42));
+    objects.append(makeWire(33, 100, 30, 100, 42));
+    objects.append(makeWire(34, 100, 54, 120, 54));
+    objects.append(makeWire(35, 120, 54, 140, 54));
+    objects.append(makeWire(36, 140, 66, 120, 66));
+
+    sim::Simulator simulator;
+    simulator.setObjects(objects);
+
+    sim::State state = simulator.compute();
+    CHECK(!state.activeLoads.value(6, false));
+    CHECK(!state.closedContacts.value(5, true));
+
+    simulator.toggle(22);
+    state = simulator.compute();
+    CHECK(state.activeLoads.value(24, false));
+    CHECK(state.closedContacts.value(5, false));
+    CHECK(state.activeLoads.value(6, false));
+
+    // Releasing the start button keeps the contactor sealed in.
+    simulator.toggle(22);
+    state = simulator.compute();
+    CHECK(state.activeLoads.value(6, false));
+
+    simulator.toggle(21);
+    state = simulator.compute();
+    CHECK(!state.activeLoads.value(24, false));
+    CHECK(!state.activeLoads.value(6, false));
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -222,6 +305,7 @@ int main(int argc, char** argv)
     testSealInLatch();
     testNormallyClosedContact();
     testRotationallyPlacedCoil();
+    testThreePhaseMotor();
 
     if (g_failures) {
         std::fprintf(stderr, "%d simulation check(s) failed\n", g_failures);

@@ -237,9 +237,6 @@ State evaluate(const QList<cad::Object>& objects, const QHash<int, bool>& manual
             const int pairCount = qMin(top, count - top);
             for (int i = 0; i < pairCount; ++i)
                 sets.unite(keyFor(devicePins.at(i)), keyFor(devicePins.at(top + i)));
-        } else if (isCoil(object.type) || isLamp(object.type) || isResistor(object.type)) {
-            if (count >= 2)
-                sets.unite(keyFor(devicePins.at(0)), keyFor(devicePins.at(1)));
         } else if (isBusbar(object.type)) {
             for (int i = 1; i < count; ++i)
                 sets.unite(keyFor(devicePins.at(0)), keyFor(devicePins.at(i)));
