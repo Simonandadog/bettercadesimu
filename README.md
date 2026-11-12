@@ -19,10 +19,14 @@ Early work in progress. The viewer is usable and the editor core has landed:
 
 - `.cad` parser that replays the append-only record log by object ID.
 - Native `.bcs` JSON project format with save / save-as / load.
-- Pan / zoom / fit-to-window canvas with a snap-style grid.
+- Pan / zoom / fit-to-window canvas with a snap-style grid. Drag with the
+  middle mouse button to pan; the wheel zooms around the cursor.
 - Rubber-band selection in every direction, plus hover highlight.
 - Drag objects to move them (snapped to the grid) and <kbd>Del</kbd> to remove them.
-- Undo / redo for placement, movement and deletion (Ctrl+Z / Ctrl+Shift+Z).
+- Rotate selected symbols 90° with <kbd>R</kbd> (anticlockwise) or
+  <kbd>Shift</kbd>+<kbd>R</kbd> (clockwise). Labels stay upright.
+- Undo / redo for placement, movement, rotation, editing and deletion
+  (Ctrl+Z / Ctrl+Shift+Z).
 - Copy / paste / duplicate selected objects (Ctrl+C, Ctrl+V, Ctrl+D).
 - Edit an object's reference label or text with <kbd>F2</kbd> (or double-click it),
   with undo support.
@@ -41,7 +45,7 @@ Early work in progress. The viewer is usable and the editor core has landed:
   files to the native project format.
 - Drag-and-drop and recent-files support.
 
-Rotation, property editing, simulation and the rest of the catalogue come next.
+Simulation and the rest of the catalogue come next.
 
 ## Requirements
 
@@ -119,6 +123,7 @@ CADe SIMU field layout, so imported documents survive a round trip:
       "type": 5000,
       "typeField": "5000#-F1##1#2",
       "pinFlagCount": 8,
+      "rotation": 90,
       "fields": ["15", "6", "0", "0", "-12", "-9", "6", "15", "0", "0", "0", "1", "0", "0", "0"]
     }
   ]
@@ -126,7 +131,8 @@ CADe SIMU field layout, so imported documents survive a round trip:
 ```
 
 `fields` holds `value` or `value#text` strings in file order, exactly as the
-`.cad` parser exposes them.
+`.cad` parser exposes them. `rotation` is optional and only written for rotated
+symbols (90, 180 or 270 degrees clockwise); imported `.cad` files start at 0.
 
 ## Tests
 

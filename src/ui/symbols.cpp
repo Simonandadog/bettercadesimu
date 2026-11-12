@@ -3,6 +3,7 @@
 #include <QFont>
 #include <QFontMetricsF>
 #include <QPainterPath>
+#include <QTransform>
 #include <QVector>
 #include <QtMath>
 
@@ -41,6 +42,21 @@ double poleX(int index)
 QRectF recordedBox(const cad::Object& object, double defLeft, double defTop,
                    double defWidth, double defHeight);
 int transformerTaps(const cad::Object& object);
+
+int normalisedRotation(int rotation)
+{
+    rotation %= 360;
+    return rotation < 0 ? rotation + 360 : rotation;
+}
+
+QRectF rotatedRect(const QRectF& rect, int rotation)
+{
+    if (rotation == 0)
+        return rect;
+    QTransform transform;
+    transform.rotate(rotation);
+    return transform.mapRect(rect);
+}
 
 // Number of pin names actually present. The parser keeps the full pin flag
 // row, so empty entries must not be counted.
@@ -1095,7 +1111,7 @@ void drawPinNames(QPainter* painter, const cad::Object& object, const Info& info
 
 } // namespace
 
-QRectF localBounds(const cad::Object& object)
+QRectF baseLocalBounds(const cad::Object& object)
 {
     if (object.isWireGlyph())
         return QRectF(-9, -9, 18, 18);
@@ -1123,6 +1139,29 @@ QRectF localBounds(const cad::Object& object)
     const QRectF label = labelRect(object, box);
     const QRectF united = label.isEmpty() ? box : box.united(label);
     return united.adjusted(-3, -3, 3, 3);
+}
+
+QRectF localBounds(const cad::Object& object)
+{
+    const int rotation = normalisedRotation(object.rotation);
+    if (rotation == 0 || object.isLine() || object.isText() || object.isJunction()
+        || object.isWireGlyph()) {
+        return baseLocalBounds(object);
+    }
+
+    QRectF bounds = rotatedRect(symbolBox(object), rotation);
+    if (!object.label.isEmpty()) {
+        // Labels stay upright, centred where the rotated label anchor lands.
+        const QRectF baseLabel = labelRect(object, symbolBox(object));
+        QTransform transform;
+        transform.rotate(rotation);
+        const QPointF centre = transform.map(baseLabel.center());
+        QRectF upright(baseLabel);
+        upright.moveCenter(centre);
+        bounds = bounds.united(upright);
+    }
+
+    return bounds.adjusted(-3, -3, 3, 3);
 }
 
 QColor lineColor(const cad::Object& object)
@@ -1214,6 +1253,10 @@ void paintObject(QPainter* painter, const cad::Object& object, bool selected)
         return;
     }
 
+    const int rotation = normalisedRotation(object.rotation);
+    if (rotation != 0)
+        painter->rotate(rotation);
+
     const Info info = describe(object);
     painter->setPen(QPen(symbolColor(object), 2.0));
     painter->setBrush(Qt::NoBrush);
@@ -1300,14 +1343,23 @@ void paintObject(QPainter* painter, const cad::Object& object, bool selected)
         break;
     }
 
+    drawPinNames(painter, object, info);
+
+    if (rotation != 0)
+        painter->rotate(-rotation);
+
     if (!object.label.isEmpty()) {
-        const QRectF rect = labelRect(object, symbolBox(object));
+        QRectF rect = labelRect(object, symbolBox(object));
+        if (rotation != 0) {
+            QTransform transform;
+            transform.rotate(rotation);
+            rect.moveCenter(transform.map(rect.center()));
+        }
+
         painter->setFont(labelFont());
         painter->setPen(QColor(0, 0, 0));
         painter->drawText(rect, Qt::AlignRight | Qt::AlignVCenter, object.label);
     }
-
-    drawPinNames(painter, object, info);
 
     painter->restore();
 }

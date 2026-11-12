@@ -32,6 +32,7 @@ struct Object {
     QList<Field> fields;   // raw fields in file order
     int pinFlagCount = kMinPinFlags;
     int definitionIndex = -1; // which record last defined this object
+    int rotation = 0;         // clockwise rotation in degrees (0, 90, 180, 270)
 
     // Tail accessors; index 0 is the first field after the pin flags.
     const Field& tail(int index) const { return fields.at(pinFlagCount + index); }

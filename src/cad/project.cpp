@@ -116,6 +116,8 @@ QByteArray Project::toJson() const
         entry.insert(QStringLiteral("type"), object.type);
         entry.insert(QStringLiteral("typeField"), typeFieldFor(object));
         entry.insert(QStringLiteral("pinFlagCount"), object.pinFlagCount);
+        if (object.rotation != 0)
+            entry.insert(QStringLiteral("rotation"), object.rotation);
 
         QJsonArray fields;
         for (const Field& field : object.fields)
@@ -183,6 +185,9 @@ Project Project::fromJson(const QByteArray& json, QString* error)
         const int declaredFlags = entry.value(QStringLiteral("pinFlagCount"))
                                       .toInt(kMinPinFlags);
         object.pinFlagCount = qMax(kMinPinFlags, qMax(object.pins.size(), declaredFlags));
+
+        const int rotation = entry.value(QStringLiteral("rotation")).toInt(0);
+        object.rotation = ((rotation % 360) + 360) % 360;
 
         const QJsonArray fields = entry.value(QStringLiteral("fields")).toArray();
         object.fields.reserve(qMax(fields.size(), object.pinFlagCount + kTailFields));

@@ -235,6 +235,37 @@ private:
     cad::Object m_after;
 };
 
+class RotateObjectsCommand : public QUndoCommand
+{
+public:
+    RotateObjectsCommand(CanvasView* view, const QList<cad::Object>& before,
+                         const QList<cad::Object>& after)
+        : QUndoCommand(before.size() == 1 ? QObject::tr("Rotate object")
+                                          : QObject::tr("Rotate objects"))
+        , m_view(view)
+        , m_before(before)
+        , m_after(after)
+    {
+    }
+
+    void redo() override
+    {
+        for (const cad::Object& object : std::as_const(m_after))
+            m_view->replaceObject(object);
+    }
+
+    void undo() override
+    {
+        for (const cad::Object& object : std::as_const(m_before))
+            m_view->replaceObject(object);
+    }
+
+private:
+    CanvasView* m_view;
+    QList<cad::Object> m_before;
+    QList<cad::Object> m_after;
+};
+
 } // namespace
 
 CanvasView::CanvasView(QWidget* parent)
@@ -347,7 +378,29 @@ void CanvasView::updateSceneRect()
         bounds = QRectF(0, 0, 400 * kUnit, 300 * kUnit);
     else
         bounds = bounds.adjusted(-60, -60, 60, 60);
-    m_scene->setSceneRect(bounds);
+
+    // Never shrink below what is already on screen: panning far away and then
+    // editing an object should not snap the view back.
+    m_scene->setSceneRect(m_scene->sceneRect().united(bounds));
+}
+
+// QGraphicsView can only scroll inside its scene rect. Grow that rect when a
+// middle-drag approaches the edge so the canvas can always be moved freely.
+void CanvasView::ensurePanRoom()
+{
+    const QRectF visible = mapToScene(viewport()->rect()).boundingRect();
+    if (visible.isEmpty())
+        return;
+
+    const QRectF wanted = visible.adjusted(-visible.width(), -visible.height(),
+                                           visible.width(), visible.height());
+    const QRectF current = m_scene->sceneRect();
+    if (current.contains(wanted))
+        return;
+
+    const QPointF centre = visible.center();
+    m_scene->setSceneRect(current.united(wanted));
+    centerOn(centre);
 }
 
 QList<cad::Object> CanvasView::objects() const
@@ -445,6 +498,26 @@ void CanvasView::editObject(const cad::Object& object)
     }
 
     m_undoStack->push(new EditObjectCommand(this, before, object));
+}
+
+void CanvasView::rotateSelection(int degrees)
+{
+    QList<cad::Object> before;
+    QList<cad::Object> after;
+    for (const cad::Object& object : selectedObjects()) {
+        if (!object.isComponent())
+            continue;
+
+        cad::Object rotated = object;
+        rotated.rotation = ((rotated.rotation + degrees) % 360 + 360) % 360;
+        before.append(object);
+        after.append(rotated);
+    }
+
+    if (before.isEmpty())
+        return;
+
+    m_undoStack->push(new RotateObjectsCommand(this, before, after));
 }
 
 void CanvasView::replaceObject(const cad::Object& object)
@@ -704,6 +777,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
     if (event->button() == Qt::MiddleButton) {
         m_panning = true;
         m_panStart = event->pos();
+        ensurePanRoom();
         setCursor(Qt::ClosedHandCursor);
         event->accept();
         return;
@@ -754,6 +828,7 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
     if (m_panning) {
         const QPoint delta = event->pos() - m_panStart;
         m_panStart = event->pos();
+        ensurePanRoom();
         horizontalScrollBar()->setValue(horizontalScrollBar()->value() - delta.x());
         verticalScrollBar()->setValue(verticalScrollBar()->value() - delta.y());
         event->accept();

@@ -236,6 +236,7 @@ void testProject()
     object.fields[cad::kMinPinFlags + 6].value = 6;
     object.fields[cad::kMinPinFlags + 7].value = 15;
     object.fields[cad::kMinPinFlags + 14].text = QStringLiteral("note");
+    object.rotation = 90;
 
     cad::Project project;
     const int id = project.addObject(object);
@@ -261,6 +262,7 @@ void testProject()
         CHECK(back->boxWidth() == 6);
         CHECK(back->boxHeight() == 15);
         CHECK(back->text() == QStringLiteral("note"));
+        CHECK(back->rotation == 90);
     }
 
     // Objects with more than eight pins keep their extra pin-flag fields.

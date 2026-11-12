@@ -3,6 +3,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPointF>
+#include <QScrollBar>
 #include <QUndoStack>
 
 #include <cstdio>
@@ -295,6 +296,34 @@ void testTextTool(ui::CanvasView& view)
     view.hide();
 }
 
+void testMiddleClickPan(ui::CanvasView& view)
+{
+    view.clearDocument();
+    view.insertObject(makeSymbol(30, 30));
+    view.resize(640, 480);
+    view.show();
+    view.zoomAll();
+    for (int i = 0; i < 12; ++i)
+        view.zoomIn();
+    QApplication::processEvents();
+
+    const int beforeX = view.horizontalScrollBar()->value();
+    const int beforeY = view.verticalScrollBar()->value();
+    const QPoint start = view.viewport()->rect().center();
+    const QPoint end = start - QPoint(60, 40);
+
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, start, Qt::MiddleButton,
+              Qt::MiddleButton);
+    sendMouse(view.viewport(), QEvent::MouseMove, end, Qt::NoButton,
+              Qt::MiddleButton);
+    sendMouse(view.viewport(), QEvent::MouseButtonRelease, end, Qt::MiddleButton,
+              Qt::NoButton);
+
+    CHECK(view.horizontalScrollBar()->value() == beforeX + 60);
+    CHECK(view.verticalScrollBar()->value() == beforeY + 40);
+    view.hide();
+}
+
 void testEditObject(ui::CanvasView& view)
 {
     view.clearDocument();
@@ -322,6 +351,50 @@ void testEditObject(ui::CanvasView& view)
     const int count = view.undoStack()->count();
     view.editObject(view.objects().first());
     CHECK(view.undoStack()->count() == count);
+}
+
+void testRotation(ui::CanvasView& view)
+{
+    view.clearDocument();
+    view.insertObject(makeSymbol(30, 30));
+    ui::CadItem* item = view.itemById(1);
+    CHECK(item != nullptr);
+    if (!item)
+        return;
+    item->setSelected(true);
+
+    const QRectF upright = item->boundingRect();
+    view.rotateSelection(90);
+
+    const cad::Object rotated = view.objects().first();
+    CHECK(rotated.rotation == 90);
+    CHECK(view.itemById(1)->object().rotation == 90);
+    CHECK(view.itemById(1)->boundingRect() != upright);
+
+    view.undoStack()->undo();
+    CHECK(view.objects().first().rotation == 0);
+    view.undoStack()->redo();
+    CHECK(view.objects().first().rotation == 90);
+
+    // Four quarter turns come back to the original orientation.
+    view.rotateSelection(90);
+    view.rotateSelection(90);
+    view.rotateSelection(90);
+    CHECK(view.objects().first().rotation == 0);
+
+    // Lines and text are not rotated.
+    const int count = view.undoStack()->count();
+    view.insertText(QStringLiteral("note"), QPoint(12, 12));
+    for (QGraphicsItem* graphicsItem : view.scene()->items()) {
+        if (auto* cadItem = qgraphicsitem_cast<ui::CadItem*>(graphicsItem))
+            cadItem->setSelected(true);
+    }
+    view.rotateSelection(90);
+    for (const cad::Object& object : view.objects()) {
+        if (object.isText())
+            CHECK(object.rotation == 0);
+    }
+    CHECK(view.undoStack()->count() > count);
 }
 
 void testCleanState(ui::CanvasView& view)
@@ -353,7 +426,9 @@ int main(int argc, char* argv[])
     testClipboard(view);
     testWireTools(view);
     testTextTool(view);
+    testMiddleClickPan(view);
     testEditObject(view);
+    testRotation(view);
     testCleanState(view);
 
     if (g_failures > 0) {

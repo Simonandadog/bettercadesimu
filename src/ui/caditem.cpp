@@ -37,7 +37,9 @@ CadItem::CadItem(const cad::Object& object, QGraphicsItem* parent)
 
 QRectF CadItem::boundingRect() const
 {
-    return m_bounds;
+    // Generous margin so the selection outline, pin names and antialiasing are
+    // inside the dirty region; otherwise moving an item leaves trails.
+    return m_bounds.adjusted(-32, -32, 32, 32);
 }
 
 QPainterPath CadItem::shape() const

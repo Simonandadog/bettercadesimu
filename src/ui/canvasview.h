@@ -53,6 +53,7 @@ public:
     void selectAll();
     QList<cad::Object> selectedObjects() const;
     void editObject(const cad::Object& object);
+    void rotateSelection(int degrees);
     void replaceObject(const cad::Object& object);
     void copySelection();
     void paste();
@@ -94,6 +95,7 @@ private:
     void updateSceneRect();
     void updateCursor();
     QPoint snapUnits(const QPointF& scenePosition) const;
+    void ensurePanRoom();
 
     QGraphicsScene* m_scene = nullptr;
     QUndoStack* m_undoStack = nullptr;

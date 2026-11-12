@@ -162,6 +162,25 @@ void MainWindow::createMenus()
                 propertiesAction->setEnabled(!m_view->selectedObjects().isEmpty());
             });
 
+    QAction* rotateLeftAction = editMenu->addAction(tr("Rotate &Left"));
+    rotateLeftAction->setShortcut(QKeySequence(Qt::Key_R));
+    rotateLeftAction->setStatusTip(tr("Rotate the selected symbols 90° anticlockwise"));
+    connect(rotateLeftAction, &QAction::triggered, this,
+            [this] { m_view->rotateSelection(-90); });
+
+    QAction* rotateRightAction = editMenu->addAction(tr("Rotate Ri&ght"));
+    rotateRightAction->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_R));
+    rotateRightAction->setStatusTip(tr("Rotate the selected symbols 90° clockwise"));
+    connect(rotateRightAction, &QAction::triggered, this,
+            [this] { m_view->rotateSelection(90); });
+
+    connect(editMenu, &QMenu::aboutToShow, rotateLeftAction,
+            [this, rotateLeftAction, rotateRightAction] {
+                const bool enabled = !m_view->selectedObjects().isEmpty();
+                rotateLeftAction->setEnabled(enabled);
+                rotateRightAction->setEnabled(enabled);
+            });
+
     editMenu->addSeparator();
 
     QAction* deleteAction = editMenu->addAction(tr("&Delete"));
