@@ -78,6 +78,7 @@ enum class Family {
     Breaker,
     Differential,
     Contactor,
+    ContactorRelay,
     Switch,
     Motor,
     Resistor,
@@ -109,6 +110,11 @@ struct Info {
     bool normallyClosed = false;
     bool twoWay = false;
     bool timed = false;
+    // A three-terminal changeover (common, NC throw, NO throw).
+    bool changeover = false;
+    // For a four-terminal device: state of the second contact (the first uses
+    // normallyClosed). This lets one component carry an NC and an NO contact.
+    bool secondNormallyClosed = false;
 };
 
 int polesFromPins(const cad::Object& object)
@@ -117,6 +123,31 @@ int polesFromPins(const cad::Object& object)
     if (pins >= 2 && pins <= 8 && pins % 2 == 0)
         return pins / 2;
     return 1;
+}
+
+bool isCoilPin(const QString& name)
+{
+    return name.trimmed().startsWith(QLatin1Char('A'));
+}
+
+int combinedPowerPinCount(const cad::Object& object)
+{
+    int count = 0;
+    for (const QString& pin : object.pins) {
+        if (!pin.trimmed().isEmpty() && !isCoilPin(pin))
+            ++count;
+    }
+    return count;
+}
+
+bool combinedCoilFirst(const cad::Object& object)
+{
+    for (const QString& pin : object.pins) {
+        if (pin.trimmed().isEmpty())
+            continue;
+        return isCoilPin(pin);
+    }
+    return false;
 }
 
 Info describe(const cad::Object& object)
@@ -230,11 +261,17 @@ Info describe(const cad::Object& object)
 
     if (type >= 7000 && type <= 7015) {
         info.family = Family::Contact;
-        info.normallyClosed = type == 7001 || type == 7004 || type == 7007
-                              || type == 7010 || type == 7013;
-        info.twoWay = type == 7002 || type == 7005 || type == 7008
-                      || type == 7011 || type == 7014;
-        info.timed = type >= 7012;
+        // Two-terminal forms use IEC auxiliary-contact numbers: 11-12 and
+        // 55-56 are normally closed, 13-14 / 67-68 are normally open.
+        info.normallyClosed = type == 7001 || type == 7005 || type == 7009
+                              || type == 7013;
+        // Three pins are a changeover (common, NC, NO). Four pins are two
+        // independent contacts on one actuator (NC pair then NO pair).
+        info.changeover = type == 7003 || type == 7007 || type == 7011
+                          || type == 7015;
+        info.twoWay = type == 7002 || type == 7006 || type == 7014;
+        info.normallyClosed = info.normallyClosed || info.changeover || info.twoWay;
+        info.timed = type >= 7008;
         return info;
     }
 
@@ -245,29 +282,29 @@ Info describe(const cad::Object& object)
     }
 
     if (type >= 8000 && type <= 8023) {
-        info.family = Family::PushButton;
-        info.normallyClosed = type == 8001 || type == 8004 || type == 8007
-                              || type == 8010 || type == 8013 || type == 8016
-                              || type == 8019 || type == 8022;
-        info.twoWay = type == 8002 || type == 8005 || type == 8008
-                      || type == 8011 || type == 8014 || type == 8017
-                      || type == 8020 || type == 8023;
+        // 8016-8019 are the fixed thermal-overload auxiliary contacts; they
+        // share the contact glyph but are not push buttons.
+        info.family = type >= 8016 && type <= 8019 ? Family::Contact
+                                                   : Family::PushButton;
+        info.normallyClosed = type == 8001 || type == 8005 || type == 8009
+                              || type == 8013 || type == 8017;
+        info.changeover = type == 8003 || type == 8007 || type == 8011
+                          || type == 8015 || type == 8019 || type == 8020;
+        info.twoWay = type == 8002 || type == 8006 || type == 8010
+                      || type == 8014 || type == 8018 || type == 8021
+                      || type == 8022;
+        info.normallyClosed = info.normallyClosed || info.changeover || info.twoWay;
         return info;
     }
 
     if (type >= 9000 && type <= 9016) {
-        info.family = type == 9008 || (type >= 9010 && type <= 9012) ? Family::Lamp
-                                                                     : Family::Coil;
+        info.family = type >= 9008 && type <= 9013 ? Family::Lamp : Family::Coil;
         return info;
     }
 
     if (type >= 1070 && type <= 1073) {
-        info.family = Family::Contactor;
-        int contactPins = 0;
-        for (const QString& pin : object.pins) {
-            if (!pin.isEmpty() && !pin.startsWith(QLatin1Char('A')))
-                ++contactPins;
-        }
+        info.family = Family::ContactorRelay;
+        const int contactPins = combinedPowerPinCount(object);
         info.poles = qMax(1, contactPins / 2);
         return info;
     }
@@ -347,6 +384,18 @@ QRectF symbolBox(const cad::Object& object)
 
     case Family::Outlet:
         return recordedBox(object, -4.5, -7.5, 9.0, 15.0);
+
+    case Family::Contact:
+    case Family::PushButton:
+        if (info.changeover)
+            return QRectF(-6.0 * kUnit, 0, 12.0 * kUnit, spanPx());
+        return QRectF(-3.0 * kUnit, 0,
+                      (info.poles - 1) * pitchPx() + 6.0 * kUnit, spanPx());
+
+    case Family::ContactorRelay: {
+        const int top = qMax(1, combinedPowerPinCount(object) / 2);
+        return QRectF(-4.5 * kUnit, 0, top * pitchPx() + 12.0 * kUnit, spanPx());
+    }
 
     default:
         return QRectF(-3.0 * kUnit, 0,
@@ -523,6 +572,39 @@ void drawTimer(QPainter* painter)
     painter->drawLine(box.bottomLeft(), box.topRight());
 }
 
+void drawContactorRelay(QPainter* painter, const cad::Object& object,
+                        const Info& info)
+{
+    const bool coilFirst = combinedCoilFirst(object);
+    const int top = qMax(1, info.poles);
+    const double powerX0 = coilFirst ? pitchPx() : 0.0;
+
+    for (int pole = 0; pole < top; ++pole) {
+        const double x = powerX0 + poleX(pole);
+        drawSwitchArm(painter, x, false);
+        painter->drawLine(QPointF(x + 1.0 * kUnit, 5.0 * kUnit),
+                          QPointF(x + 3.4 * kUnit, 7.4 * kUnit));
+    }
+
+    const double coilX = coilFirst ? 0.0 : top * pitchPx();
+    painter->save();
+    painter->translate(coilX, 0);
+    drawCoil(painter, cad::Object{}, Info{Family::Coil});
+    painter->restore();
+
+    int coilPins = 0;
+    for (const QString& pin : object.pins) {
+        if (!pin.trimmed().isEmpty() && isCoilPin(pin))
+            ++coilPins;
+    }
+    for (int i = 2; i < coilPins; ++i) {
+        const double x = coilX + (i - 1) * pitchPx();
+        painter->drawLine(QPointF(coilX + 4.5 * kUnit, 6.0 * kUnit),
+                          QPointF(x, 6.0 * kUnit));
+        painter->drawEllipse(QPointF(x, 6.0 * kUnit), 0.7 * kUnit, 0.7 * kUnit);
+    }
+}
+
 void drawMotor(QPainter* painter, const cad::Object& object, const Info& info)
 {
     const double poles = info.poles > 1 ? info.poles : 3;
@@ -673,6 +755,45 @@ QVector<QPointF> terminalPositions(const cad::Object& object)
     if (count <= 0)
         return {};
 
+    if (info.changeover && count == 3) {
+        // Common on top, NC and NO throws at the bottom.
+        return {QPointF(0, 0), QPointF(-6.0 * kUnit, spanPx()),
+                QPointF(6.0 * kUnit, spanPx())};
+    }
+
+    if (info.family == Family::ContactorRelay) {
+        const bool coilFirst = combinedCoilFirst(object);
+        const int powerTop = qMax(1, combinedPowerPinCount(object) / 2);
+        const double powerX0 = coilFirst ? pitchPx() : 0;
+        const double coilX = coilFirst ? 0 : powerTop * pitchPx();
+
+        QVector<QPointF> points;
+        int powerIndex = 0;
+        int coilIndex = 0;
+        for (const QString& raw : object.pins) {
+            const QString name = raw.trimmed();
+            if (name.isEmpty())
+                continue;
+            if (isCoilPin(name)) {
+                if (coilIndex == 0)
+                    points.append(QPointF(coilX, 0));
+                else if (coilIndex == 1)
+                    points.append(QPointF(coilX, spanPx()));
+                else
+                    points.append(QPointF(coilX + (coilIndex - 1) * pitchPx(),
+                                          spanPx() / 2.0));
+                ++coilIndex;
+            } else {
+                const int column = powerIndex % powerTop;
+                const int row = powerIndex / powerTop;
+                points.append(QPointF(powerX0 + column * pitchPx(),
+                                      row == 0 ? 0.0 : spanPx()));
+                ++powerIndex;
+            }
+        }
+        return points;
+    }
+
     switch (info.family) {
     case Family::PowerFeed:
         return ladderPins(count, count, spanPx());
@@ -695,6 +816,9 @@ QVector<QPointF> terminalPositions(const cad::Object& object)
         const int topCount = qMin(count, qMax(poles, (count + 1) / 2));
         return ladderPins(count, topCount, spanPx());
     }
+
+    case Family::ContactorRelay:
+        break;
 
     case Family::Motor:
         return ladderPins(count, count, spanPx());
@@ -1044,19 +1168,56 @@ void drawOutlet(QPainter* painter, const cad::Object& object)
     painter->drawEllipse(QPointF(cx + 1.5 * kUnit, cy), hole, hole);
 }
 
+void drawChangeoverContact(QPainter* painter, bool normallyClosed, bool button)
+{
+    const double pivotY = 4.0 * kUnit;
+    const double throwY = 8.0 * kUnit;
+    const double reach = 6.0 * kUnit;
+
+    drawPinStub(painter, 0, 0.0, pivotY);
+    painter->drawEllipse(QPointF(0, pivotY), 0.7 * kUnit, 0.7 * kUnit);
+
+    drawPinStub(painter, -reach, throwY, spanPx());
+    drawPinStub(painter, reach, throwY, spanPx());
+    painter->drawEllipse(QPointF(-reach, throwY), 0.6 * kUnit, 0.6 * kUnit);
+    painter->drawEllipse(QPointF(reach, throwY), 0.6 * kUnit, 0.6 * kUnit);
+
+    // The arm rests on the normally-closed throw and swings to the NO throw.
+    const double targetX = normallyClosed ? -reach : reach;
+    painter->drawLine(QPointF(0, pivotY), QPointF(targetX, throwY));
+
+    if (button) {
+        painter->drawLine(QPointF(0, pivotY), QPointF(-4.0 * kUnit, pivotY));
+        painter->drawLine(QPointF(-4.0 * kUnit, pivotY - 2.0 * kUnit),
+                          QPointF(-4.0 * kUnit, pivotY + 2.0 * kUnit));
+    }
+}
+
 void drawContactForm(QPainter* painter, const Info& info)
 {
+    if (info.changeover) {
+        drawChangeoverContact(painter, info.normallyClosed, false);
+        return;
+    }
     const int poles = info.twoWay ? 2 : 1;
     for (int pole = 0; pole < poles; ++pole)
-        drawContact(painter, poleX(pole), info.normallyClosed, false);
+        drawContact(painter, poleX(pole),
+                    pole == 0 ? info.normallyClosed : info.secondNormallyClosed,
+                    false);
 }
 
 void drawPushButton(QPainter* painter, const Info& info)
 {
+    if (info.changeover) {
+        drawChangeoverContact(painter, info.normallyClosed, true);
+        return;
+    }
     const int poles = info.twoWay ? 2 : 1;
     for (int pole = 0; pole < poles; ++pole) {
         const double x = poleX(pole);
-        drawContact(painter, x, info.normallyClosed, true);
+        drawContact(painter, x,
+                    pole == 0 ? info.normallyClosed : info.secondNormallyClosed,
+                    true);
     }
     // Common actuator bar joining both contacts.
     painter->drawLine(QPointF(-5.0 * kUnit, 6.0 * kUnit),
@@ -1455,6 +1616,9 @@ void paintObject(QPainter* painter, const cad::Object& object, bool selected,
         break;
     case Family::Contactor:
         drawContactorPoles(painter, info);
+        break;
+    case Family::ContactorRelay:
+        drawContactorRelay(painter, object, info);
         break;
     case Family::Switch:
         for (int pole = 0; pole < info.poles; ++pole)

@@ -68,6 +68,8 @@ public:
     void setSimulationRunning(bool running);
     void refreshSimulation();
     void toggleSimulationObject(int objectId);
+    void pressSimulationObject(int objectId);
+    void releaseSimulationObject(int objectId);
     void resetSimulation();
     const sim::State& simulationState() const { return m_simState; }
 
@@ -131,6 +133,8 @@ private:
     sim::Simulator m_simulator;
     sim::State m_simState;
     bool m_simRunning = false;
+    // Momentary button currently held down by the mouse, or -1.
+    int m_simHeldId = -1;
 };
 
 // Render a document to a PNG without opening a window. Used by --render and

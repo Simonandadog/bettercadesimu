@@ -102,6 +102,29 @@ void testTerminals()
     CHECK(feed.size() == 1);
     CHECK(closePoint(feed.value(0), QPointF(0, 0)));
 
+    // Combined contactor relay: coil and power contacts in one component.
+    const QVector<QPointF> relay = ui::terminalPositions(
+        makeComponent(5, 1070, QStringLiteral("-K1"),
+                      {QStringLiteral("A1"), QStringLiteral("A2"),
+                       QStringLiteral("1"), QStringLiteral("2")}, 10, 10, 15, 15));
+    CHECK(relay.size() == 4);
+    CHECK(closePoint(relay.value(0), QPointF(0, 0)));
+    CHECK(closePoint(relay.value(1), QPointF(0, 12.0 * ui::kUnit)));
+    CHECK(closePoint(relay.value(2), QPointF(6.0 * ui::kUnit, 0)));
+    CHECK(closePoint(relay.value(3), QPointF(6.0 * ui::kUnit, 12.0 * ui::kUnit)));
+
+    const QVector<QPointF> relay3 = ui::terminalPositions(
+        makeComponent(6, 1072, QStringLiteral("-K1"),
+                      {QStringLiteral("1"), QStringLiteral("3"),
+                       QStringLiteral("5"), QStringLiteral("2"),
+                       QStringLiteral("4"), QStringLiteral("6"),
+                       QStringLiteral("A1"), QStringLiteral("A2")}, 10, 10, 27, 15));
+    CHECK(relay3.size() == 8);
+    CHECK(closePoint(relay3.value(2), QPointF(12.0 * ui::kUnit, 0)));
+    CHECK(closePoint(relay3.value(5), QPointF(12.0 * ui::kUnit, 12.0 * ui::kUnit)));
+    CHECK(closePoint(relay3.value(6), QPointF(18.0 * ui::kUnit, 0)));
+    CHECK(closePoint(relay3.value(7), QPointF(18.0 * ui::kUnit, 12.0 * ui::kUnit)));
+
     const QVector<QPointF> threePhase = ui::terminalPositions(
         makeComponent(5, 3004, QString(), {}, 10, 10));
     CHECK(threePhase.size() == 3);
@@ -127,15 +150,17 @@ void testButtonAndContactor()
     sim::Simulator simulator;
     simulator.setObjects(objects);
 
-    CHECK(simulator.isToggleable(2));
-    CHECK(!simulator.isToggleable(3));
+    CHECK(simulator.isOperable(2));
+    CHECK(simulator.isMomentary(2));
+    CHECK(!simulator.isOperable(3));
 
     sim::State state = simulator.compute();
     CHECK(!state.activeLoads.value(3, false));
     CHECK(!state.closedContacts.value(2, true));
     CHECK(!state.closedContacts.value(5, true));
 
-    simulator.toggle(2);
+    // A momentary button only conducts while it is held.
+    simulator.press(2);
     state = simulator.compute();
     CHECK(state.activeLoads.value(3, false));
     CHECK(state.closedContacts.value(2, false));
@@ -143,6 +168,11 @@ void testButtonAndContactor()
     CHECK(state.highlighted.contains(10));
     CHECK(state.highlighted.contains(11));
     CHECK(state.highlighted.contains(3));
+
+    simulator.release(2);
+    state = simulator.compute();
+    CHECK(!state.activeLoads.value(3, false));
+    CHECK(!state.closedContacts.value(2, true));
     CHECK(closePoint(ui::terminalPositions(objects.at(2)).value(0), QPointF(0, 0)));
 }
 
@@ -172,18 +202,19 @@ void testSealInLatch()
 
     CHECK(!simulator.compute().activeLoads.value(5, false));
 
-    simulator.toggle(3);
+    // Start is momentary; the auxiliary contact seals the contactor in.
+    simulator.press(3);
     CHECK(simulator.compute().activeLoads.value(5, false));
 
     // Releasing the start button must not drop the contactor.
-    simulator.toggle(3);
+    simulator.release(3);
     CHECK(simulator.compute().activeLoads.value(5, false));
 
-    // The normally-closed stop button breaks the seal-in path.
-    simulator.toggle(6);
+    // The normally-closed stop button breaks the seal-in path while held.
+    simulator.press(6);
     CHECK(!simulator.compute().activeLoads.value(5, false));
 
-    simulator.toggle(6);
+    simulator.release(6);
     CHECK(!simulator.compute().activeLoads.value(5, false));
 }
 
@@ -277,21 +308,233 @@ void testThreePhaseMotor()
     CHECK(!state.activeLoads.value(6, false));
     CHECK(!state.closedContacts.value(5, true));
 
-    simulator.toggle(22);
+    simulator.press(22);
     state = simulator.compute();
     CHECK(state.activeLoads.value(24, false));
     CHECK(state.closedContacts.value(5, false));
     CHECK(state.activeLoads.value(6, false));
 
-    // Releasing the start button keeps the contactor sealed in.
-    simulator.toggle(22);
+    // Releasing the momentary start button keeps the contactor sealed in.
+    simulator.release(22);
     state = simulator.compute();
     CHECK(state.activeLoads.value(6, false));
 
-    simulator.toggle(21);
+    simulator.press(21);
     state = simulator.compute();
     CHECK(!state.activeLoads.value(24, false));
     CHECK(!state.activeLoads.value(6, false));
+
+    simulator.release(21);
+    state = simulator.compute();
+    CHECK(!state.activeLoads.value(24, false));
+    CHECK(!state.activeLoads.value(6, false));
+}
+
+void testMaintainedSwitch()
+{
+    // A section-4 switch latches on a click; it is not momentary.
+    QList<cad::Object> objects;
+    objects.append(makeComponent(1, 3000, QString(), {QStringLiteral("L1")}, 30, 30));
+    objects.append(makeComponent(2, 2007, QStringLiteral("-S1"),
+                                 {QStringLiteral("1"), QStringLiteral("2")}, 60, 30));
+    objects.append(makeComponent(3, 9000, QStringLiteral("-K1"),
+                                 {QStringLiteral("A1"), QStringLiteral("A2")}, 60, 42));
+    objects.append(makeComponent(4, 3001, QString(), {QStringLiteral("N")}, 60, 54));
+    objects.append(makeWire(10, 30, 30, 60, 30));
+
+    sim::Simulator simulator;
+    simulator.setObjects(objects);
+
+    CHECK(simulator.isOperable(2));
+    CHECK(!simulator.isMomentary(2));
+    CHECK(!simulator.compute().activeLoads.value(3, false));
+
+    simulator.toggle(2);
+    CHECK(simulator.compute().activeLoads.value(3, false));
+
+    simulator.toggle(2);
+    CHECK(!simulator.compute().activeLoads.value(3, false));
+}
+
+void testChangeoverForms()
+{
+    // Three-terminal momentary button: common on top, NC and NO throws below.
+    {
+        QList<cad::Object> objects;
+        objects.append(makeComponent(1, 3000, QString(), {QStringLiteral("L1")}, 30, 30));
+        objects.append(makeComponent(2, 8003, QStringLiteral("-S1"),
+                                     {QStringLiteral("11"), QStringLiteral("12"),
+                                      QStringLiteral("14")}, 60, 30));
+        objects.append(makeComponent(3, 9008, QStringLiteral("-H1"),
+                                     {QStringLiteral("X1"), QStringLiteral("X2")}, 54, 42));
+        objects.append(makeComponent(4, 3001, QString(), {QStringLiteral("N")}, 54, 54));
+        objects.append(makeWire(10, 30, 30, 60, 30));
+
+        sim::Simulator simulator;
+        simulator.setObjects(objects);
+        CHECK(simulator.compute().activeLoads.value(3, false));
+
+        simulator.press(2);
+        CHECK(!simulator.compute().activeLoads.value(3, false));
+
+        simulator.release(2);
+        CHECK(simulator.compute().activeLoads.value(3, false));
+    }
+
+    // Four-terminal button: one NC contact (11-12) and one NO contact (13-14).
+    {
+        QList<cad::Object> objects;
+        objects.append(makeComponent(1, 3000, QString(), {QStringLiteral("L1")}, 30, 30));
+        objects.append(makeComponent(2, 8002, QStringLiteral("-S2"),
+                                     {QStringLiteral("11"), QStringLiteral("13"),
+                                      QStringLiteral("12"), QStringLiteral("14")}, 60, 30));
+        objects.append(makeComponent(3, 9008, QStringLiteral("-H1"),
+                                     {QStringLiteral("X1"), QStringLiteral("X2")}, 60, 42));
+        objects.append(makeComponent(4, 9008, QStringLiteral("-H2"),
+                                     {QStringLiteral("X1"), QStringLiteral("X2")}, 66, 42));
+        objects.append(makeComponent(5, 3001, QString(), {QStringLiteral("N")}, 60, 54));
+        objects.append(makeComponent(6, 3001, QString(), {QStringLiteral("N")}, 66, 54));
+        objects.append(makeWire(10, 30, 30, 60, 30));
+        objects.append(makeWire(11, 60, 30, 66, 30));
+
+        sim::Simulator simulator;
+        simulator.setObjects(objects);
+        sim::State state = simulator.compute();
+        CHECK(state.activeLoads.value(3, false));
+        CHECK(!state.activeLoads.value(4, false));
+
+        simulator.press(2);
+        state = simulator.compute();
+        CHECK(!state.activeLoads.value(3, false));
+        CHECK(state.activeLoads.value(4, false));
+
+        simulator.release(2);
+        state = simulator.compute();
+        CHECK(state.activeLoads.value(3, false));
+        CHECK(!state.activeLoads.value(4, false));
+    }
+}
+
+void testThermalContacts()
+{
+    // 8017 is the fixed NC trip contact (95-96) and 8016 the NO contact
+    // (97-98). Neither can be clicked as a push button.
+    QList<cad::Object> objects;
+    objects.append(makeComponent(1, 3000, QString(), {QStringLiteral("L1")}, 30, 30));
+    objects.append(makeComponent(2, 8017, QStringLiteral("-F1"),
+                                 {QStringLiteral("95"), QStringLiteral("96")}, 60, 30));
+    objects.append(makeComponent(3, 8016, QStringLiteral("-F1"),
+                                 {QStringLiteral("97"), QStringLiteral("98")}, 72, 30));
+    objects.append(makeComponent(4, 9008, QStringLiteral("-H1"),
+                                 {QStringLiteral("X1"), QStringLiteral("X2")}, 60, 42));
+    objects.append(makeComponent(5, 9008, QStringLiteral("-H2"),
+                                 {QStringLiteral("X1"), QStringLiteral("X2")}, 72, 42));
+    objects.append(makeComponent(6, 3001, QString(), {QStringLiteral("N")}, 60, 54));
+    objects.append(makeComponent(7, 3001, QString(), {QStringLiteral("N")}, 72, 54));
+    objects.append(makeWire(10, 30, 30, 60, 30));
+    objects.append(makeWire(11, 30, 30, 72, 30));
+
+    sim::Simulator simulator;
+    simulator.setObjects(objects);
+
+    CHECK(!simulator.isOperable(2));
+    CHECK(!simulator.isOperable(3));
+
+    sim::State state = simulator.compute();
+    CHECK(state.activeLoads.value(4, false));
+    CHECK(!state.activeLoads.value(5, false));
+
+    simulator.toggle(2);
+    simulator.toggle(3);
+    state = simulator.compute();
+    CHECK(state.activeLoads.value(4, false));
+    CHECK(!state.activeLoads.value(5, false));
+}
+
+void testCoilTerminals()
+{
+    // A 9001 coil has an extra B1 terminal; the load must be measured across
+    // A1/A2, not across the first two pins.
+    QList<cad::Object> objects;
+    objects.append(makeComponent(1, 3000, QString(), {QStringLiteral("L1")}, 30, 30));
+    objects.append(makeComponent(2, 9001, QStringLiteral("-K1"),
+                                 {QStringLiteral("A1"), QStringLiteral("B1"),
+                                  QStringLiteral("A2")}, 60, 30, 8, 15));
+    objects.append(makeComponent(3, 3001, QString(), {QStringLiteral("N")}, 66, 42));
+    objects.append(makeWire(10, 30, 30, 60, 30));
+
+    sim::Simulator simulator;
+    simulator.setObjects(objects);
+    CHECK(simulator.compute().activeLoads.value(2, false));
+}
+
+void testCombinedContactorRelay()
+{
+    // 1072 is a three-pole contactor with its own A1/A2 coil. Energising the
+    // coil closes the power contacts.
+    QList<cad::Object> objects;
+    objects.append(makeComponent(1, 3000, QString(), {QStringLiteral("L1")}, 30, 30));
+    objects.append(makeComponent(2, 1072, QStringLiteral("-K1"),
+                                 {QStringLiteral("1"), QStringLiteral("3"),
+                                  QStringLiteral("5"), QStringLiteral("2"),
+                                  QStringLiteral("4"), QStringLiteral("6"),
+                                  QStringLiteral("A1"), QStringLiteral("A2")},
+                                 60, 30, 27, 15));
+    objects.append(makeComponent(3, 9008, QStringLiteral("-H1"),
+                                 {QStringLiteral("X1"), QStringLiteral("X2")}, 60, 42));
+    objects.append(makeComponent(4, 3001, QString(), {QStringLiteral("N")}, 60, 54));
+    objects.append(makeComponent(5, 3001, QString(), {QStringLiteral("N")}, 78, 42));
+    objects.append(makeWire(10, 30, 30, 60, 30));
+    objects.append(makeWire(11, 30, 30, 78, 30));
+
+    sim::Simulator simulator;
+    simulator.setObjects(objects);
+
+    const sim::State state = simulator.compute();
+    CHECK(state.activeLoads.value(2, false));
+    CHECK(state.activeLoads.value(3, false));
+    CHECK(state.closedContacts.value(2, false));
+}
+
+void testBusbarIsolation()
+{
+    // A phase busbar has one pin per conductor (L1/L2/L3/N). Different names
+    // must stay separate; joining them would short the phases together.
+    QList<cad::Object> objects;
+    objects.append(makeComponent(1, 9040, QStringLiteral("-X1"),
+                                 {QStringLiteral("L1"), QStringLiteral("L2"),
+                                  QStringLiteral("L3"), QStringLiteral("N")},
+                                 30, 30, 18, 15));
+    objects.append(makeComponent(2, 3000, QString(), {QStringLiteral("L1")}, 30, 20));
+    objects.append(makeComponent(3, 3001, QString(), {QStringLiteral("N")}, 30, 42));
+    objects.append(makeComponent(4, 3001, QString(), {QStringLiteral("N")}, 36, 42));
+    objects.append(makeComponent(5, 9008, QStringLiteral("-H1"),
+                                 {QStringLiteral("X1"), QStringLiteral("X2")}, 30, 30));
+    objects.append(makeComponent(6, 9008, QStringLiteral("-H2"),
+                                 {QStringLiteral("X1"), QStringLiteral("X2")}, 36, 30));
+    objects.append(makeWire(10, 30, 20, 30, 30));
+
+    sim::Simulator simulator;
+    simulator.setObjects(objects);
+    sim::State state = simulator.compute();
+    CHECK(state.activeLoads.value(5, false));  // L1 lamp is live
+    CHECK(!state.activeLoads.value(6, false)); // L2 lamp must stay dead
+
+    // Pins that share a name are still joined, which is how a terminal strip
+    // builds a common node.
+    QList<cad::Object> common;
+    common.append(makeComponent(1, 9040, QStringLiteral("-X1"),
+                                {QStringLiteral("L1"), QStringLiteral("L1")},
+                                30, 30, 18, 15));
+    common.append(makeComponent(2, 3000, QString(), {QStringLiteral("L1")}, 30, 20));
+    common.append(makeComponent(3, 3001, QString(), {QStringLiteral("N")}, 36, 42));
+    common.append(makeComponent(4, 9008, QStringLiteral("-H1"),
+                                {QStringLiteral("X1"), QStringLiteral("X2")}, 36, 30));
+    common.append(makeWire(10, 30, 20, 30, 30));
+
+    sim::Simulator commonSimulator;
+    commonSimulator.setObjects(common);
+    CHECK(commonSimulator.compute().activeLoads.value(4, false));
 }
 
 } // namespace
@@ -306,6 +549,12 @@ int main(int argc, char** argv)
     testNormallyClosedContact();
     testRotationallyPlacedCoil();
     testThreePhaseMotor();
+    testMaintainedSwitch();
+    testChangeoverForms();
+    testThermalContacts();
+    testCoilTerminals();
+    testCombinedContactorRelay();
+    testBusbarIsolation();
 
     if (g_failures) {
         std::fprintf(stderr, "%d simulation check(s) failed\n", g_failures);

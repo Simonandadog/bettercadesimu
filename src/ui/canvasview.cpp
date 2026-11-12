@@ -431,6 +431,7 @@ void CanvasView::clearDocument()
     m_dragStart.clear();
     m_wireActive = false;
     m_simState = {};
+    m_simHeldId = -1;
     resetTransform();
     cancelInsert();
     m_nextId = 1;
@@ -442,6 +443,7 @@ void CanvasView::setSimulationRunning(bool running)
         return;
 
     m_simRunning = running;
+    m_simHeldId = -1;
     if (running) {
         m_simulator.setObjects(objects());
         m_simulator.reset();
@@ -482,10 +484,27 @@ void CanvasView::toggleSimulationObject(int objectId)
     refreshSimulation();
 }
 
+void CanvasView::pressSimulationObject(int objectId)
+{
+    if (!m_simRunning)
+        return;
+    m_simulator.press(objectId);
+    refreshSimulation();
+}
+
+void CanvasView::releaseSimulationObject(int objectId)
+{
+    if (!m_simRunning)
+        return;
+    m_simulator.release(objectId);
+    refreshSimulation();
+}
+
 void CanvasView::resetSimulation()
 {
     if (!m_simRunning)
         return;
+    m_simHeldId = -1;
     m_simulator.resetManual();
     refreshSimulation();
 }
@@ -871,8 +890,14 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
 
     if (m_simRunning && event->button() == Qt::LeftButton && m_tool == Tool::Select) {
         if (auto* cadItem = qgraphicsitem_cast<CadItem*>(itemAt(event->pos()))) {
-            if (m_simulator.isToggleable(cadItem->object().id)) {
-                toggleSimulationObject(cadItem->object().id);
+            const int id = cadItem->object().id;
+            if (m_simulator.isOperable(id)) {
+                if (m_simulator.isMomentary(id)) {
+                    m_simHeldId = id;
+                    pressSimulationObject(id);
+                } else {
+                    toggleSimulationObject(id);
+                }
                 event->accept();
                 return;
             }
@@ -923,6 +948,14 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
     if (event->button() == Qt::MiddleButton && m_panning) {
         m_panning = false;
         updateCursor();
+        event->accept();
+        return;
+    }
+
+    if (event->button() == Qt::LeftButton && m_simHeldId >= 0) {
+        const int held = m_simHeldId;
+        m_simHeldId = -1;
+        releaseSimulationObject(held);
         event->accept();
         return;
     }

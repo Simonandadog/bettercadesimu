@@ -35,10 +35,18 @@ public:
     State compute();
 
     // Push buttons and manual switches can be operated while simulating.
-    bool isToggleable(int objectId) const;
+    // Push buttons (8000-8015) are momentary and only conduct while held;
+    // switches (2003-2007, 8020-8022) latch on a click. Thermal relay contacts
+    // (8016-8019) are not manually operable.
+    bool isOperable(int objectId) const;
+    bool isMomentary(int objectId) const;
     bool manualState(int objectId) const;
     void setManualState(int objectId, bool operated);
+    void press(int objectId);
+    void release(int objectId);
     void toggle(int objectId);
+    // Click behaviour: press a momentary button, toggle a maintained switch.
+    void operate(int objectId);
     void resetManual();
 
     // Clears both the switch positions and the relay (coil) state.

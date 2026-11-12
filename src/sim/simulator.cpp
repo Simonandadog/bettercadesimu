@@ -17,20 +17,36 @@ PointKey keyFor(const QPointF& point)
     return qMakePair(qRound(point.x()), qRound(point.y()));
 }
 
+// Two-terminal normally-closed forms. The numbering follows IEC auxiliary
+// contact marking: 11-12 and 55-56 are NC, 13-14 and 67-68 / 97-98 are NO.
 bool isNormallyClosed(int type)
 {
-    return type == 7001 || type == 7004 || type == 7007 || type == 7010 || type == 7013
-        || type == 8001 || type == 8004 || type == 8007 || type == 8010 || type == 8013
-        || type == 8016 || type == 8019 || type == 8022;
+    const bool contact = type == 7001 || type == 7005 || type == 7009 || type == 7013;
+    const bool button = type == 8001 || type == 8005 || type == 8009 || type == 8013;
+    const bool thermal = type == 8017;
+    return contact || button || thermal;
 }
 
 bool isContactor(int type)
 {
     return (type >= 2000 && type <= 2002) || type == 2006 || type == 2008;
 }
-bool isSwitch(int type) { return type >= 2003 && type <= 2007; }
+// Section-11 contactor relays carry their coil (A1/A2) and power contacts in
+// one component.
+bool isCombinedContactor(int type) { return type >= 1070 && type <= 1073; }
+bool isSwitch(int type)
+{
+    // Section-4 manual switches. 2006 is the single-pole contactor and is not
+    // a manual device.
+    return type == 2003 || type == 2004 || type == 2005 || type == 2007;
+}
 bool isContact(int type) { return type >= 7000 && type <= 7015; }
 bool isPushButton(int type) { return type >= 8000 && type <= 8023; }
+// Push buttons are momentary: they conduct only while held. 8020-8022 are
+// maintained rotary/cam switches and latch like the section-4 switches.
+bool isMomentaryButton(int type) { return type >= 8000 && type <= 8015; }
+bool isMaintainedSwitch(int type) { return isSwitch(type) || (type >= 8020 && type <= 8022); }
+bool isManualInput(int type) { return isMomentaryButton(type) || isMaintainedSwitch(type); }
 bool isFuse(int type) { return type >= 5000 && type <= 5009; }
 bool isBreaker(int type) { return type >= 6000 && type <= 6014; }
 bool isCoil(int type) { return (type >= 9000 && type <= 9007) || (type >= 9014 && type <= 9016); }
@@ -40,9 +56,40 @@ bool isTimer(int type) { return type >= 7500 && type <= 7588; }
 bool isResistor(int type) { return type >= 1050 && type <= 1052; }
 bool isTerminalBlock(int type) { return type >= 10100 && type <= 10112; }
 bool isBusbar(int type) { return type >= 9040 && type <= 9043; }
+bool isCoilDevice(int type)
+{
+    return isCoil(type) || isTimer(type) || isCombinedContactor(type);
+}
 bool isLoad(int type)
 {
-    return isCoil(type) || isLamp(type) || isMotor(type) || isTimer(type) || isResistor(type);
+    return isCoilDevice(type) || isLamp(type) || isMotor(type) || isResistor(type);
+}
+
+// Terminal indices used by a two-terminal load, taken from the pin names when
+// possible. Coils are A1/A2, lamps X1/X2 and timers 1/2; a coil such as 9001
+// (A1, B1, A2) must not be measured across A1/B1.
+QPair<int, int> loadTerminals(const cad::Object& object, const QStringList& names)
+{
+    auto find = [&names](const QString& a, const QString& b) -> QPair<int, int> {
+        const int ia = names.indexOf(a);
+        const int ib = names.indexOf(b);
+        if (ia >= 0 && ib >= 0)
+            return qMakePair(ia, ib);
+        return qMakePair(-1, -1);
+    };
+
+    QPair<int, int> pair(-1, -1);
+    if (isCoilDevice(object.type))
+        pair = find(QStringLiteral("A1"), QStringLiteral("A2"));
+    if (pair.first < 0 && (isLamp(object.type) || isCoil(object.type)))
+        pair = find(QStringLiteral("X1"), QStringLiteral("X2"));
+    if (pair.first < 0 && (isTimer(object.type) || isResistor(object.type)))
+        pair = find(QStringLiteral("1"), QStringLiteral("2"));
+    if (pair.first < 0 && isResistor(object.type))
+        pair = find(QStringLiteral("A1"), QStringLiteral("A2"));
+    if (pair.first < 0 && names.size() >= 2)
+        pair = qMakePair(0, 1);
+    return pair;
 }
 
 QStringList namedPins(const cad::Object& object)
@@ -215,34 +262,81 @@ State evaluate(const QList<cad::Object>& objects, const QHash<int, bool>& manual
         if (count < 1)
             continue;
 
-        bool closed = true;
-        const bool normallyClosed = isNormallyClosed(object.type);
-        if (isContactor(object.type)) {
-            closed = coils.value(object.label, false);
-        } else if (isContact(object.type)) {
-            const bool operated = coils.value(object.label, false);
-            closed = normallyClosed ? !operated : operated;
-        } else if (isSwitch(object.type) || isPushButton(object.type)) {
-            const bool operated = manual.value(object.id, false);
-            closed = normallyClosed ? !operated : operated;
-        }
+        // Contacts (7000-7015) follow their relay/contactor label. Push buttons
+        // and switches follow the manual state; thermal relay contacts
+        // (8016-8019) are fixed because tripping is not modelled yet.
+        bool operated = false;
+        if (isContactor(object.type) || isContact(object.type)
+            || isCombinedContactor(object.type))
+            operated = coils.value(object.label, false);
+        else if (isManualInput(object.type))
+            operated = manual.value(object.id, false);
 
-        state.closedContacts.insert(object.id, closed);
-
-        if (isFuse(object.type) || isBreaker(object.type) || isContactor(object.type)
-            || isContact(object.type) || isSwitch(object.type) || isPushButton(object.type)) {
-            if (!closed)
-                continue;
+        if (isFuse(object.type) || isBreaker(object.type)) {
+            state.closedContacts.insert(object.id, true);
             const int top = qMin(topPinCount(object, count), count);
             const int pairCount = qMin(top, count - top);
             for (int i = 0; i < pairCount; ++i)
                 sets.unite(keyFor(devicePins.at(i)), keyFor(devicePins.at(top + i)));
-        } else if (isBusbar(object.type)) {
-            for (int i = 1; i < count; ++i)
-                sets.unite(keyFor(devicePins.at(0)), keyFor(devicePins.at(i)));
-        } else if (isTerminalBlock(object.type)) {
-            for (int i = 1; i < count; ++i)
-                sets.unite(keyFor(devicePins.at(0)), keyFor(devicePins.at(i)));
+        } else if (isCombinedContactor(object.type)) {
+            state.closedContacts.insert(object.id, operated);
+            if (operated) {
+                QVector<int> powerPins;
+                const QStringList pinNames = names.value(object.id);
+                for (int i = 0; i < pinNames.size(); ++i) {
+                    if (!pinNames.at(i).startsWith(QLatin1Char('A')))
+                        powerPins.append(i);
+                }
+                const int top = powerPins.size() / 2;
+                for (int i = 0; i < top; ++i)
+                    sets.unite(keyFor(devicePins.at(powerPins.at(i))),
+                               keyFor(devicePins.at(powerPins.at(i + top))));
+            }
+        } else if (isContactor(object.type) || isSwitch(object.type)) {
+            // All poles are normally open and close together when operated.
+            state.closedContacts.insert(object.id, operated);
+            if (operated) {
+                const int top = qMin(topPinCount(object, count), count);
+                const int pairCount = qMin(top, count - top);
+                for (int i = 0; i < pairCount; ++i)
+                    sets.unite(keyFor(devicePins.at(i)), keyFor(devicePins.at(top + i)));
+            }
+        } else if (isContact(object.type) || isPushButton(object.type)) {
+            if (count == 3) {
+                // Changeover: common, normally-closed, normally-open.
+                sets.unite(keyFor(devicePins.at(0)),
+                           keyFor(devicePins.at(operated ? 2 : 1)));
+                state.closedContacts.insert(object.id, operated);
+            } else if (count >= 4) {
+                // Two independent contacts on one actuator: NC (0-2) and
+                // NO (1-3).
+                sets.unite(keyFor(devicePins.at(operated ? 1 : 0)),
+                           keyFor(devicePins.at(operated ? 3 : 2)));
+                state.closedContacts.insert(object.id, operated);
+            } else {
+                const bool closed = isNormallyClosed(object.type) ? !operated : operated;
+                state.closedContacts.insert(object.id, closed);
+                if (closed)
+                    sets.unite(keyFor(devicePins.at(0)), keyFor(devicePins.at(1)));
+            }
+        } else if (isBusbar(object.type) || isTerminalBlock(object.type)) {
+            // Busbars and terminal strips only join pins that carry the same
+            // terminal name (e.g. repeated L1 or 0). Distinct names such as
+            // L1/L2/L3/N stay electrically separate so the block cannot short
+            // phases together.
+            const QStringList pinNames = names.value(object.id);
+            QHash<QString, int> firstPin;
+            for (int i = 0; i < count; ++i) {
+                const QString name = pinNames.at(i).trimmed();
+                if (name.isEmpty())
+                    continue;
+                if (firstPin.contains(name)) {
+                    sets.unite(keyFor(devicePins.at(firstPin.value(name))),
+                               keyFor(devicePins.at(i)));
+                } else {
+                    firstPin.insert(name, i);
+                }
+            }
         }
     }
 
@@ -376,10 +470,14 @@ State evaluate(const QList<cad::Object>& objects, const QHash<int, bool>& manual
             }
             active = (!groups.isEmpty() && hasReturn) || groups.size() >= 2;
         } else if (devicePins.size() >= 2) {
-            const QPointF a = devicePins.at(0);
-            const QPointF b = devicePins.at(1);
-            active = (isLive(keyFor(a)) && isReturn(keyFor(b)))
-                  || (isReturn(keyFor(a)) && isLive(keyFor(b)));
+            const QPair<int, int> terminals =
+                loadTerminals(object, names.value(object.id));
+            if (terminals.first >= 0 && terminals.second < devicePins.size()) {
+                const QPointF a = devicePins.at(terminals.first);
+                const QPointF b = devicePins.at(terminals.second);
+                active = (isLive(keyFor(a)) && isReturn(keyFor(b)))
+                      || (isReturn(keyFor(a)) && isLive(keyFor(b)));
+            }
         }
 
         state.activeLoads.insert(object.id, active);
@@ -435,7 +533,7 @@ State Simulator::compute()
     for (int iteration = 0; iteration < 24; ++iteration) {
         QHash<QString, bool> next;
         for (const cad::Object& object : m_objects) {
-            if (!isCoil(object.type) && !isTimer(object.type))
+            if (!isCoilDevice(object.type))
                 continue;
             if (object.label.isEmpty())
                 continue;
@@ -460,11 +558,20 @@ State Simulator::compute()
     return state;
 }
 
-bool Simulator::isToggleable(int objectId) const
+bool Simulator::isOperable(int objectId) const
 {
     for (const cad::Object& object : m_objects) {
         if (object.id == objectId)
-            return isSwitch(object.type) || isPushButton(object.type);
+            return isManualInput(object.type);
+    }
+    return false;
+}
+
+bool Simulator::isMomentary(int objectId) const
+{
+    for (const cad::Object& object : m_objects) {
+        if (object.id == objectId)
+            return isMomentaryButton(object.type);
     }
     return false;
 }
@@ -476,13 +583,34 @@ bool Simulator::manualState(int objectId) const
 
 void Simulator::setManualState(int objectId, bool operated)
 {
-    m_manual.insert(objectId, operated);
+    if (isOperable(objectId))
+        m_manual.insert(objectId, operated);
+}
+
+void Simulator::press(int objectId)
+{
+    if (isOperable(objectId))
+        m_manual.insert(objectId, true);
+}
+
+void Simulator::release(int objectId)
+{
+    if (isMomentary(objectId))
+        m_manual.insert(objectId, false);
 }
 
 void Simulator::toggle(int objectId)
 {
-    if (isToggleable(objectId))
+    if (isOperable(objectId) && !isMomentary(objectId))
         m_manual.insert(objectId, !m_manual.value(objectId, false));
+}
+
+void Simulator::operate(int objectId)
+{
+    if (isMomentary(objectId))
+        press(objectId);
+    else
+        toggle(objectId);
 }
 
 void Simulator::resetManual()

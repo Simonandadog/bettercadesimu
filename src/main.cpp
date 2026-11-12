@@ -263,7 +263,7 @@ int main(int argc, char* argv[])
                 bool ok = false;
                 const int id = value.toInt(&ok);
                 if (ok)
-                    simulator.toggle(id);
+                    simulator.operate(id);
             }
             simulationState = simulator.compute();
             simulated = true;

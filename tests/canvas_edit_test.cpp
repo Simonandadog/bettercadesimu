@@ -455,10 +455,22 @@ void testSimulation(ui::CanvasView& view)
     CHECK(!view.simulationState().activeLoads.value(3, false));
     CHECK(!view.itemById(3)->isSimulated());
 
-    view.toggleSimulationObject(2);
+    // A mouse click is a press-and-hold for a momentary button.
+    const QPoint button = view.mapFromScene(QPointF(75 * ui::kUnit, 36 * ui::kUnit));
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, button, Qt::LeftButton,
+              Qt::LeftButton);
+    CHECK(view.simulationState().activeLoads.value(3, false));
+    sendMouse(view.viewport(), QEvent::MouseButtonRelease, button, Qt::LeftButton,
+              Qt::NoButton);
+    CHECK(!view.simulationState().activeLoads.value(3, false));
+
+    view.pressSimulationObject(2);
     CHECK(view.simulationState().activeLoads.value(3, false));
     CHECK(view.itemById(3)->isSimulated());
     CHECK(view.itemById(10)->isSimulated());
+
+    view.releaseSimulationObject(2);
+    CHECK(!view.simulationState().activeLoads.value(3, false));
 
     view.resetSimulation();
     CHECK(!view.simulationState().activeLoads.value(3, false));

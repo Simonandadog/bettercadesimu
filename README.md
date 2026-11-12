@@ -44,10 +44,11 @@ Early work in progress. The viewer is usable and the editor core has landed:
   palette, rendering per-section artwork proof sheets, and converting `.cad`
   files to the native project format.
 - Drag-and-drop and recent-files support.
-- Relay-logic simulation: press <kbd>F5</kbd> to run, click push buttons and
-  switches to operate them, and <kbd>F6</kbd> to release them. Live wires and
-  energised coils, lamps and motors are highlighted; label-matched contacts
-  follow their contactor/relay coils, including seal-in latches.
+- Relay-logic simulation: press <kbd>F5</kbd> to run, press and hold push
+  buttons to operate them, click switches to latch them, and <kbd>F6</kbd> to
+  release everything. Live wires and energised coils, lamps and motors are
+  highlighted; label-matched contacts follow their contactor/relay coils,
+  including seal-in latches.
 - Ready-made circuits in `examples/`: `latching-start.bcs` (control-only
   start/stop station) and `dol-starter.bcs` (three-phase direct-on-line motor
   starter with a seal-in contactor).
@@ -120,20 +121,27 @@ Convert a `.cad` document to the native JSON project format (also accepts a
 Press <kbd>F5</kbd> (or choose **Simulation → Run**) to build the circuit and
 solve it. While running:
 
-- Click a push button or manual switch to operate it; <kbd>F6</kbd> releases
-  every button and switch.
+- Press and hold a momentary push button (types 8000-8015). Maintained
+  switches and selectors (2003-2005, 2007 and 8020-8022) latch on a click;
+  thermal-overload contacts (8016-8019) stay in their fixed NC/NO state until
+  tripping is modelled. <kbd>F6</kbd> releases every button and switch.
 - Wires that carry a live or return rail glow green, and energised loads
   (coils, lamps, motors, timers, resistors) get a green outline.
 - Contactors and relays are linked by their reference label: a coil labelled
   `-K1` drives every contact labelled `-K1`. Normally-closed contacts invert
   the action. Coil state is retained between solves, so a seal-in contact keeps
   a contactor latched after the start button is released.
+- Combined contactor-relay symbols (1070-1073) carry their A1/A2 coil and
+  power contacts in one component.
+- Busbars and terminal strips (9040-9043, 10100-10112) only join pins that
+  share the same terminal name, so an L1/L2/L3/N block never shorts phases
+  together.
 - Power comes from the phase/neutral feed symbols, 3014/3018 supplies and
   3019 batteries. The solver reports when it cannot find a live or return rail.
 
-This first version models single-phase control circuits and uses a simplified
-phase/neutral reachability check for three-phase motors. Full three-phase power
-flow, timer delays, PLC blocks and drives are still to come.
+This version models single-phase control circuits and a simplified
+phase/neutral reachability check for three-phase motors. Timer delays, PLC
+blocks, drives and full three-phase power flow are still to come.
 
 ## Native project format
 
