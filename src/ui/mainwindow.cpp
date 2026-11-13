@@ -112,6 +112,10 @@ void MainWindow::createMenus()
     saveAsAction->setStatusTip(tr("Save the schematic under a new name"));
     connect(saveAsAction, &QAction::triggered, this, &MainWindow::saveFileAs);
 
+    QAction* exportCadAction = fileMenu->addAction(tr("&Export CADe SIMU…"));
+    exportCadAction->setStatusTip(tr("Write the schematic as a .cad document"));
+    connect(exportCadAction, &QAction::triggered, this, &MainWindow::exportCad);
+
     QAction* reloadAction = fileMenu->addAction(tr("&Reload"));
     reloadAction->setShortcut(QKeySequence::Refresh);
     reloadAction->setStatusTip(tr("Reload the current document from disk"));
@@ -579,6 +583,42 @@ void MainWindow::saveFileAs()
         target += QStringLiteral(".bcs");
 
     saveTo(target);
+}
+
+void MainWindow::exportCad()
+{
+    QSettings settings;
+    QString suggested = m_currentPath;
+    if (suggested.isEmpty()) {
+        suggested = QDir(settings.value(QStringLiteral("files/lastDir"), QDir::homePath()).toString())
+                        .filePath(QStringLiteral("schematic.cad"));
+    } else if (suggested.endsWith(QStringLiteral(".bcs"), Qt::CaseInsensitive)) {
+        suggested.chop(4);
+        suggested += QStringLiteral(".cad");
+    }
+
+    const QString path = QFileDialog::getSaveFileName(
+        this, tr("Export CADe SIMU document"), suggested,
+        tr("CADe SIMU documents (*.cad);;All files (*)"));
+    if (path.isEmpty())
+        return;
+
+    QString target = path;
+    if (QFileInfo(target).suffix().isEmpty())
+        target += QStringLiteral(".cad");
+
+    cad::Project project = m_project;
+    project.objects = m_view->objects();
+    project.rebuildNextId();
+
+    QString error;
+    if (!project.saveCad(target, &error, QFileInfo(target).completeBaseName())) {
+        QMessageBox::warning(this, tr("Export CADe SIMU"), error);
+        return;
+    }
+
+    settings.setValue(QStringLiteral("files/lastDir"), QFileInfo(target).absolutePath());
+    statusBar()->showMessage(tr("Exported %1").arg(QFileInfo(target).fileName()), 4000);
 }
 
 bool MainWindow::saveTo(const QString& path)

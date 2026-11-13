@@ -42,6 +42,7 @@ private slots:
     void openFileDialog();
     void saveFile();
     void saveFileAs();
+    void exportCad();
     void reloadFile();
     void deleteSelection();
     void selectAll();

@@ -41,8 +41,11 @@ Early work in progress. The viewer is usable and the editor core has landed:
 - IEC symbol painters for power feeds, fuses, breakers, contactors, motors,
   drives, contacts, push buttons, coils and timers.
 - CLI modes for dumping a parsed document, rendering it to PNG, printing the
-  palette, rendering per-section artwork proof sheets, and converting `.cad`
-  files to the native project format.
+  palette, rendering per-section artwork proof sheets, converting `.cad` files
+  to the native project format, and exporting `.bcs` projects back to `.cad`.
+- File → Export CADe SIMU… writes Latin-1 `.cad` documents with the original
+  metadata block, eight pin slots per record, and the rotation field set from
+  the editor's rotate command.
 - Drag-and-drop and recent-files support.
 - Relay-logic simulation: press <kbd>F5</kbd> to run, press and hold push
   buttons to operate them, click switches to latch them, and <kbd>F6</kbd> to
@@ -116,6 +119,16 @@ Convert a `.cad` document to the native JSON project format (also accepts a
 ./build/bettercadesimu --save-project out.bcs "path/to/schematic"
 ```
 
+Export a project as a CADe SIMU document:
+
+```sh
+./build/bettercadesimu --export-cad out.cad examples/latching-start.bcs
+```
+
+The same command is available as **File → Export CADe SIMU…**. Imported `.cad`
+files keep their original header and metadata block; new `.bcs` projects get a
+fresh metadata block using the output file name as the title.
+
 ## Simulation
 
 Press <kbd>F5</kbd> (or choose **Simulation → Run**) to build the circuit and
@@ -166,8 +179,11 @@ CADe SIMU field layout, so imported documents survive a round trip:
 ```
 
 `fields` holds `value` or `value#text` strings in file order, exactly as the
-`.cad` parser exposes them. `rotation` is optional and only written for rotated
-symbols (90, 180 or 270 degrees clockwise); imported `.cad` files start at 0.
+`.cad` parser exposes them. `rotation` is optional and written for rotated
+symbols (90, 180 or 270 degrees clockwise). The parser reads CADe's tenth tail
+field as a quarter-turn count, so imported `.cad` files retain their rotation.
+`cadHeader`, `cadMetadata` and trailing `#` markers are preserved when present,
+which keeps an imported `.cad` file byte-identical after a load/export cycle.
 
 ## Tests
 
@@ -175,10 +191,12 @@ symbols (90, 180 or 270 degrees clockwise); imported `.cad` files start at 0.
 ctest --test-dir build --output-on-failure
 ```
 
-Optionally point the suite at a real schematic:
+Optionally point the suite at a real schematic, and ask it to verify that a
+parse/export cycle is byte-identical:
 
 ```sh
-BETTERCADESIMU_FIXTURE="path/to/schematic" ./build/cad_parser_test
+BETTERCADESIMU_FIXTURE="path/to/schematic" \
+BETTERCADESIMU_ROUNDTRIP=1 ./build/cad_parser_test
 ```
 
 ## Reading the `.cad` format
@@ -212,6 +230,23 @@ Geometry lives in the first four tail fields:
 Coordinates are rendered at 4 px per file unit, which matches the dimensions of PNGs
 exported by the original application. The insertion point of a component is its first
 pin; additional poles sit 6 units to the right.
+
+The tail fields used by the editor are:
+
+| Tail index | Meaning |
+| --- | --- |
+| 0, 1 | insertion point, or wire start |
+| 2, 3 | wire end, or component secondary point |
+| 4–7 | local box `left, top, width, height` (for selection and labels) |
+| 8 | colour or fill flag |
+| 9 | clockwise orientation as `rotation / 90` (components) |
+| 10, 11, 12 | per-record flags; field 11 is normally `1` |
+| 13 | net number (wires) or first-pin net (components) |
+| 14 | inline text, always stored as `value#text` |
+
+CADe writes the type field with eight pin slots even for two-pin symbols, and the
+exporter pads short type fields the same way. Orientation values outside `0..3`
+(seen on a few catalogue records) are preserved verbatim rather than reinterpreted.
 
 ## Layout
 

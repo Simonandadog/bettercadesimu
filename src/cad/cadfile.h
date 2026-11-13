@@ -20,6 +20,7 @@ inline constexpr int kFieldCount = kMinPinFlags + kTailFields; // 23
 struct Field {
     int value = 0;
     QString text; // whatever follows the first '#' in the field, if anything
+    bool hasSuffix = false; // whether a '#' was present, even with empty text
 };
 
 struct Object {
@@ -58,12 +59,18 @@ struct Object {
 struct Document {
     QList<Object> objects;
     QString metadata;   // everything from the first "$$$" onwards
+    QString cadHeader;  // the file header, normally "CADe_SIMU"
     QString sourcePath;
     int recordCount = 0;
     QStringList warnings;
 
     static Document load(const QString& path, QString* error = nullptr);
     static Document parse(const QByteArray& data, QString* error = nullptr);
+
+    // Serialise back to the CADe SIMU text format. Raw records, the header and
+    // metadata are preserved; rotation is written to the orientation field.
+    // Missing metadata is synthesised using title (usually the file name).
+    QByteArray toCad(const QString& title = QString()) const;
 
     const Object* find(int id) const;
 };

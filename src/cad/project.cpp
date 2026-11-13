@@ -24,7 +24,7 @@ QString typeFieldFor(const Object& object)
 
 QString fieldFor(const Field& field)
 {
-    if (field.text.isEmpty())
+    if (!field.hasSuffix && field.text.isEmpty())
         return QString::number(field.value);
     return QStringLiteral("%1#%2").arg(field.value).arg(field.text);
 }
@@ -38,6 +38,7 @@ Field fieldFrom(const QString& text)
     } else {
         field.value = text.left(hash).trimmed().toInt();
         field.text = text.mid(hash + 1);
+        field.hasSuffix = true;
     }
     return field;
 }
@@ -48,6 +49,8 @@ Project Project::fromDocument(const Document& document)
 {
     Project project;
     project.objects = document.objects;
+    project.cadHeader = document.cadHeader;
+    project.cadMetadata = document.metadata;
     project.rebuildNextId();
     return project;
 }
@@ -130,9 +133,23 @@ QByteArray Project::toJson() const
     QJsonObject root;
     root.insert(QStringLiteral("format"), QString::fromLatin1(kProjectFormat));
     root.insert(QStringLiteral("version"), kProjectVersion);
+    if (!cadHeader.isEmpty())
+        root.insert(QStringLiteral("cadHeader"), cadHeader);
+    if (!cadMetadata.isEmpty())
+        root.insert(QStringLiteral("cadMetadata"), cadMetadata);
     root.insert(QStringLiteral("objects"), objectArray);
 
     return QJsonDocument(root).toJson(QJsonDocument::Indented);
+}
+
+QByteArray Project::toCad(const QString& title) const
+{
+    Document document;
+    document.objects = objects;
+    document.cadHeader = cadHeader;
+    document.metadata = cadMetadata;
+    document.recordCount = objects.size();
+    return document.toCad(title);
 }
 
 Project Project::fromJson(const QByteArray& json, QString* error)
@@ -165,6 +182,9 @@ Project Project::fromJson(const QByteArray& json, QString* error)
                          .arg(kProjectVersion);
         return project;
     }
+
+    project.cadHeader = root.value(QStringLiteral("cadHeader")).toString();
+    project.cadMetadata = root.value(QStringLiteral("cadMetadata")).toString();
 
     for (const QJsonValue& value : root.value(QStringLiteral("objects")).toArray()) {
         const QJsonObject entry = value.toObject();
@@ -234,6 +254,25 @@ bool Project::save(const QString& targetPath, QString* error)
     }
 
     file.write(toJson());
+    if (!file.commit()) {
+        if (error)
+            *error = QStringLiteral("cannot write %1: %2").arg(targetPath, file.errorString());
+        return false;
+    }
+
+    return true;
+}
+
+bool Project::saveCad(const QString& targetPath, QString* error, const QString& title)
+{
+    QSaveFile file(targetPath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        if (error)
+            *error = QStringLiteral("cannot write %1: %2").arg(targetPath, file.errorString());
+        return false;
+    }
+
+    file.write(toCad(title));
     if (!file.commit()) {
         if (error)
             *error = QStringLiteral("cannot write %1: %2").arg(targetPath, file.errorString());

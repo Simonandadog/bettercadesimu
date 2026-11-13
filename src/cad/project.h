@@ -16,6 +16,8 @@ inline constexpr const char* kProjectFormat = "bettercadesimu-project";
 struct Project {
     QList<Object> objects;
     QString path;
+    QString cadHeader; // preserved when the project came from a .cad file
+    QString cadMetadata;
     bool modified = false;
     int nextId = 1;
 
@@ -25,7 +27,11 @@ struct Project {
     static Project load(const QString& path, QString* error = nullptr);
 
     QByteArray toJson() const;
+    // Serialise as a CADe SIMU document. title is used when no metadata exists.
+    QByteArray toCad(const QString& title = QString()) const;
     bool save(const QString& path, QString* error = nullptr);
+    bool saveCad(const QString& path, QString* error = nullptr,
+                 const QString& title = QString());
 
     Object* find(int id);
     const Object* find(int id) const;

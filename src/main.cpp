@@ -122,7 +122,8 @@ int main(int argc, char* argv[])
         if (argument == QLatin1String("--dump") || argument == QLatin1String("--render")
             || argument == QLatin1String("--palette")
             || argument == QLatin1String("--palette-sheet")
-            || argument == QLatin1String("--save-project"))
+            || argument == QLatin1String("--save-project")
+            || argument == QLatin1String("--export-cad"))
             cliMode = true;
     }
 
@@ -161,6 +162,10 @@ int main(int argc, char* argv[])
         QStringLiteral("save-project"),
         QStringLiteral("Convert a .cad document to the native JSON project format."),
         QStringLiteral("output.bcs"));
+    QCommandLineOption exportCadOption(
+        QStringLiteral("export-cad"),
+        QStringLiteral("Write the schematic as a CADe SIMU .cad document."),
+        QStringLiteral("output.cad"));
     QCommandLineOption simulateOption(
         QStringLiteral("simulate"),
         QStringLiteral("Solve the circuit before --render and highlight active parts."));
@@ -173,6 +178,7 @@ int main(int argc, char* argv[])
     parser.addOption(paletteOption);
     parser.addOption(paletteSheetOption);
     parser.addOption(saveProjectOption);
+    parser.addOption(exportCadOption);
     parser.addOption(simulateOption);
     parser.addOption(pressOption);
     parser.addPositionalArgument(QStringLiteral("file"),
@@ -202,7 +208,7 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if (parser.isSet(saveProjectOption)) {
+    if (parser.isSet(saveProjectOption) || parser.isSet(exportCadOption)) {
         if (positional.isEmpty()) {
             writeError(QStringLiteral("a .cad or .bcs file is required"));
             return 2;
@@ -215,13 +221,19 @@ int main(int argc, char* argv[])
             return 1;
         }
 
-        const QString output = parser.value(saveProjectOption);
-        if (!project.save(output, &error)) {
+        const bool exportCad = parser.isSet(exportCadOption);
+        const QString output = exportCad ? parser.value(exportCadOption)
+                                         : parser.value(saveProjectOption);
+        const QFileInfo outputInfo(output);
+        const bool ok = exportCad
+                            ? project.saveCad(output, &error, outputInfo.completeBaseName())
+                            : project.save(output, &error);
+        if (!ok) {
             writeError(error);
             return 1;
         }
 
-        QTextStream(stdout) << "wrote " << QFileInfo(output).absoluteFilePath() << " ("
+        QTextStream(stdout) << "wrote " << outputInfo.absoluteFilePath() << " ("
                             << project.objects.size() << " objects)" << Qt::endl;
         return 0;
     }

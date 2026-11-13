@@ -1,4 +1,5 @@
 #include <QByteArray>
+#include <QFile>
 #include <QString>
 #include <QStringList>
 
@@ -239,6 +240,8 @@ void testProject()
     object.rotation = 90;
 
     cad::Project project;
+    project.cadHeader = QStringLiteral("CADe_SIMU");
+    project.cadMetadata = QStringLiteral("$$$metadata");
     const int id = project.addObject(object);
     CHECK(id == 1);
     CHECK(project.objects.size() == 1);
@@ -250,6 +253,8 @@ void testProject()
     CHECK(error.isEmpty());
     CHECK(restored.objects.size() == 1);
     CHECK(restored.nextId == 2);
+    CHECK(restored.cadHeader == QStringLiteral("CADe_SIMU"));
+    CHECK(restored.cadMetadata == QStringLiteral("$$$metadata"));
 
     const cad::Object* back = restored.find(1);
     CHECK(back != nullptr);
@@ -302,6 +307,87 @@ void testProject()
     CHECK(!error.isEmpty());
 }
 
+void testCadExport()
+{
+    // A component with a rotation quarter-turn and a text tail ending in '#'.
+    QStringList fields;
+    while (fields.size() < cad::kFieldCount)
+        fields << QStringLiteral("0");
+    fields[8 + 4] = QStringLiteral("-3");
+    fields[8 + 5] = QStringLiteral("6");
+    fields[8 + 6] = QStringLiteral("15");
+    fields[8 + 7] = QStringLiteral("6");
+    fields[8 + 9] = QStringLiteral("1");
+    fields[8 + 14] = QStringLiteral("0#");
+
+    QByteArray data = QByteArrayLiteral("CADe_SIMU");
+    data += '*' + record(0, QStringLiteral("7000#-K##13#14######"), fields).toLatin1();
+    data += QByteArrayLiteral("$$$test-metadata");
+
+    QString error;
+    cad::Document parsed = cad::Document::parse(data, &error);
+    CHECK(error.isEmpty());
+    CHECK(parsed.objects.size() == 1);
+    CHECK(parsed.objects.first().rotation == 90);
+    CHECK(parsed.toCad() == data);
+
+    // Changing the rotation updates the orientation field and rotates the box.
+    parsed.objects[0].rotation = 180;
+    const QByteArray rotated = parsed.toCad();
+    const cad::Document again = cad::Document::parse(rotated, &error);
+    CHECK(error.isEmpty());
+    CHECK(again.objects.size() == 1);
+    if (!again.objects.isEmpty()) {
+        const cad::Object& object = again.objects.first();
+        CHECK(object.rotation == 180);
+        CHECK(object.tail(9).value == 2);
+        CHECK(object.boxLeft() == -12);
+        CHECK(object.boxTop() == -3);
+        CHECK(object.boxWidth() == 6);
+        CHECK(object.boxHeight() == 15);
+        CHECK(object.text().isEmpty());
+        CHECK(object.tail(14).hasSuffix);
+    }
+
+    // Text objects are never treated as rotated, even when the field is set.
+    QStringList textFields;
+    while (textFields.size() < cad::kFieldCount)
+        textFields << QStringLiteral("0");
+    textFields[8 + 9] = QStringLiteral("1");
+    textFields[8 + 14] = QStringLiteral("0#Hello");
+    QByteArray textData = QByteArrayLiteral("CADe_SIMU");
+    textData += '*' + record(7, QStringLiteral("8##########"), textFields).toLatin1();
+    textData += QByteArrayLiteral("$$$meta");
+    const cad::Document textDocument = cad::Document::parse(textData, &error);
+    CHECK(error.isEmpty());
+    CHECK(textDocument.objects.size() == 1);
+    if (!textDocument.objects.isEmpty()) {
+        CHECK(textDocument.objects.first().rotation == 0);
+        CHECK(textDocument.objects.first().text() == QStringLiteral("Hello"));
+        CHECK(textDocument.toCad() == textData);
+    }
+
+    // New projects get a complete metadata block.
+    cad::Project project;
+    cad::Object object;
+    object.type = 5000;
+    object.typeParts = QStringList{QStringLiteral("5000"), QStringLiteral("-F"),
+                                   QString(), QStringLiteral("1"), QStringLiteral("2")};
+    object.pinFlagCount = cad::kMinPinFlags;
+    for (int i = 0; i < cad::kFieldCount; ++i)
+        object.fields.append(cad::Field{});
+    project.addObject(object);
+    const QByteArray exported = project.toCad(QStringLiteral("test"));
+    CHECK(exported.startsWith("CADe_SIMU*1*5000#-F##1#2######"));
+    CHECK(exported.contains("$$$*1*1*1*2*4*"));
+    CHECK(exported.endsWith("***$$$&&&"));
+    CHECK(exported.contains("test                 "));
+
+    const cad::Document exportedDocument = cad::Document::parse(exported, &error);
+    CHECK(error.isEmpty());
+    CHECK(exportedDocument.objects.size() == 1);
+}
+
 void testFixture()
 {
     const QString fixture = qEnvironmentVariable("BETTERCADESIMU_FIXTURE");
@@ -321,6 +407,12 @@ void testFixture()
     if (!expected.isEmpty())
         CHECK(parsed.recordCount == expected.toInt());
     CHECK(parsed.warnings.isEmpty());
+
+    if (qEnvironmentVariableIsSet("BETTERCADESIMU_ROUNDTRIP")) {
+        QFile file(fixture);
+        CHECK(file.open(QIODevice::ReadOnly));
+        CHECK(parsed.toCad() == file.readAll());
+    }
 }
 
 } // namespace
@@ -335,6 +427,7 @@ int main()
     testMetadata();
     testPalette();
     testProject();
+    testCadExport();
     testFixture();
 
     if (g_failures == 0) {
