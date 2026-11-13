@@ -263,6 +263,10 @@ void testWireTools(ui::CanvasView& view)
         CHECK(wire.y2() == 63);
     }
 
+    // Drawing continues from the last endpoint until Esc is pressed.
+    QKeyEvent finishRun(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+    QApplication::sendEvent(&view, &finishRun);
+
     view.undoStack()->undo();
     CHECK(view.objects().isEmpty());
     view.undoStack()->redo();
@@ -297,6 +301,87 @@ void testWireTools(ui::CanvasView& view)
 
     view.setTool(ui::CanvasView::Tool::Select);
     CHECK(view.tool() == ui::CanvasView::Tool::Select);
+    view.hide();
+}
+
+void testWireChaining(ui::CanvasView& view)
+{
+    view.clearDocument();
+    view.resize(640, 480);
+    view.show();
+    view.zoomAll();
+    QApplication::processEvents();
+
+    view.setTool(ui::CanvasView::Tool::Wire);
+    const QPoint a = view.mapFromScene(QPointF(30 * ui::kUnit, 30 * ui::kUnit));
+    const QPoint b = view.mapFromScene(QPointF(60 * ui::kUnit, 30 * ui::kUnit));
+    const QPoint c = view.mapFromScene(QPointF(60 * ui::kUnit, 60 * ui::kUnit));
+
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, a, Qt::LeftButton,
+              Qt::LeftButton);
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, b, Qt::LeftButton,
+              Qt::LeftButton);
+    CHECK(view.objects().size() == 1);
+
+    // The next click continues from the previous endpoint.
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, c, Qt::LeftButton,
+              Qt::LeftButton);
+    CHECK(view.objects().size() == 2);
+    if (view.objects().size() == 2) {
+        const cad::Object second = view.objects().at(1);
+        CHECK(second.x() == 60);
+        CHECK(second.y() == 30);
+        CHECK(second.x2() == 60);
+        CHECK(second.y2() == 60);
+    }
+
+    // Clicking the current start point ends the run.
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, c, Qt::LeftButton,
+              Qt::LeftButton);
+    CHECK(view.objects().size() == 2);
+
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, a, Qt::LeftButton,
+              Qt::LeftButton);
+    CHECK(view.objects().size() == 2);
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, b, Qt::LeftButton,
+              Qt::LeftButton);
+    CHECK(view.objects().size() == 3);
+
+    view.setTool(ui::CanvasView::Tool::Select);
+    view.hide();
+}
+
+void testPinSnapping(ui::CanvasView& view)
+{
+    view.clearDocument();
+    view.appendObject(makePart(1, 5000, QStringLiteral("-F1"),
+                               {QStringLiteral("1"), QStringLiteral("2")}, 30, 30),
+                      1);
+    view.resize(640, 480);
+    view.show();
+    view.zoomAll();
+    QApplication::processEvents();
+
+    view.setTool(ui::CanvasView::Tool::Wire);
+    // The fuse pins sit at (30, 30) and (30, 42). Click slightly off both.
+    const QPoint a = view.mapFromScene(QPointF(31 * ui::kUnit, 31 * ui::kUnit));
+    const QPoint b = view.mapFromScene(QPointF(31 * ui::kUnit, 41 * ui::kUnit));
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, a, Qt::LeftButton,
+              Qt::LeftButton);
+    sendMouse(view.viewport(), QEvent::MouseButtonPress, b, Qt::LeftButton,
+              Qt::LeftButton);
+
+    CHECK(view.objects().size() == 2);
+    if (view.objects().size() == 2) {
+        const cad::Object wire = view.objects().at(1);
+        CHECK(wire.type == 4000);
+        CHECK(wire.x() == 30);
+        CHECK(wire.y() == 30);
+        CHECK(wire.x2() == 30);
+        CHECK(wire.y2() == 42);
+    }
+
+    view.setTool(ui::CanvasView::Tool::Select);
     view.hide();
 }
 

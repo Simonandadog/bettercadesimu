@@ -27,6 +27,7 @@
 #include <QTreeWidget>
 #include <QUndoStack>
 #include <QUrl>
+#include <QVBoxLayout>
 #include <QtMath>
 
 #include "ui/canvasview.h"
@@ -70,6 +71,9 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(m_view, &CanvasView::cursorMoved, this, &MainWindow::updateCursorPosition);
     connect(m_view, &CanvasView::selectionChanged, this, &MainWindow::updateInspector);
+    connect(m_view, &CanvasView::zoomChanged, this, [this](double scale) {
+        m_zoomLabel->setText(tr("%1%").arg(qRound(scale * 100.0)));
+    });
     connect(m_view, &CanvasView::documentEdited, this, &MainWindow::documentChanged);
     connect(m_view, &CanvasView::objectActivated, this, &MainWindow::editProperties);
     connect(m_view->undoStack(), &QUndoStack::cleanChanged, this,
@@ -138,6 +142,11 @@ void MainWindow::createMenus()
     editMenu->addAction(redoAction);
 
     editMenu->addSeparator();
+
+    QAction* cutAction = editMenu->addAction(tr("Cu&t"));
+    cutAction->setShortcut(QKeySequence::Cut);
+    cutAction->setStatusTip(tr("Cut the selected objects"));
+    connect(cutAction, &QAction::triggered, m_view, &CanvasView::cutSelection);
 
     QAction* copyAction = editMenu->addAction(tr("&Copy"));
     copyAction->setShortcut(QKeySequence::Copy);
@@ -331,7 +340,18 @@ void MainWindow::createPaletteDock()
     dock->setObjectName(QStringLiteral("paletteDock"));
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
-    m_paletteTree = new QTreeWidget(dock);
+    auto* contents = new QWidget(dock);
+    auto* layout = new QVBoxLayout(contents);
+    layout->setContentsMargins(6, 6, 6, 6);
+    layout->setSpacing(6);
+
+    m_paletteSearch = new QLineEdit(contents);
+    m_paletteSearch->setPlaceholderText(tr("Search symbols…"));
+    m_paletteSearch->setClearButtonEnabled(true);
+    m_paletteSearch->setToolTip(tr("Filter by name, type number or pin name"));
+    layout->addWidget(m_paletteSearch);
+
+    m_paletteTree = new QTreeWidget(contents);
     m_paletteTree->setHeaderHidden(true);
     m_paletteTree->setIconSize(QSize(44, 44));
     m_paletteTree->setUniformRowHeights(true);
@@ -361,12 +381,50 @@ void MainWindow::createPaletteDock()
         }
     }
 
+    layout->addWidget(m_paletteTree, 1);
+
     m_paletteTree->expandToDepth(0);
     connect(m_paletteTree, &QTreeWidget::itemClicked, this, &MainWindow::showPaletteItem);
     connect(m_paletteTree, &QTreeWidget::itemDoubleClicked, this, &MainWindow::placePaletteItem);
+    connect(m_paletteSearch, &QLineEdit::textChanged, this, &MainWindow::filterPalette);
 
-    dock->setWidget(m_paletteTree);
+    dock->setWidget(contents);
     addDockWidget(Qt::LeftDockWidgetArea, dock);
+}
+
+void MainWindow::filterPalette(const QString& text)
+{
+    const QString needle = text.trimmed();
+    const bool filtering = !needle.isEmpty();
+
+    for (int i = 0; i < m_paletteTree->topLevelItemCount(); ++i) {
+        QTreeWidgetItem* sectionItem = m_paletteTree->topLevelItem(i);
+        int visible = 0;
+
+        for (int j = 0; j < sectionItem->childCount(); ++j) {
+            QTreeWidgetItem* item = sectionItem->child(j);
+            bool match = !filtering;
+            if (filtering) {
+                const int type = item->data(0, Qt::UserRole).toInt();
+                const cad::PaletteItem* entry = m_palette.find(type);
+                const QString pins = entry ? entry->pins.join(QLatin1Char(' ')) : QString();
+                match = item->text(0).contains(needle, Qt::CaseInsensitive)
+                        || QString::number(type).contains(needle)
+                        || pins.contains(needle, Qt::CaseInsensitive);
+            }
+
+            item->setHidden(!match);
+            if (match)
+                ++visible;
+        }
+
+        sectionItem->setHidden(visible == 0);
+        if (filtering && visible > 0)
+            sectionItem->setExpanded(true);
+    }
+
+    if (!filtering)
+        m_paletteTree->expandToDepth(0);
 }
 
 void MainWindow::showPaletteItem(QTreeWidgetItem* item, int column)
@@ -462,6 +520,12 @@ void MainWindow::createStatusBar()
     m_positionLabel->setMinimumWidth(180);
     m_positionLabel->setText(tr("x: —   y: —"));
     statusBar()->addWidget(m_positionLabel);
+
+    m_zoomLabel = new QLabel(tr("100%"), this);
+    m_zoomLabel->setMinimumWidth(48);
+    m_zoomLabel->setAlignment(Qt::AlignCenter);
+    m_zoomLabel->setToolTip(tr("Canvas zoom"));
+    statusBar()->addPermanentWidget(m_zoomLabel);
 
     m_documentLabel = new QLabel(tr("No document"), this);
     statusBar()->addPermanentWidget(m_documentLabel);

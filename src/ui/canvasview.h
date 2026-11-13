@@ -10,6 +10,7 @@
 #include "cad/cadfile.h"
 #include "sim/simulator.h"
 
+class QContextMenuEvent;
 class QGraphicsScene;
 class QKeyEvent;
 class QPainter;
@@ -57,6 +58,7 @@ public:
     void rotateSelection(int degrees);
     void replaceObject(const cad::Object& object);
     void copySelection();
+    void cutSelection();
     void paste();
     void duplicateSelection();
     bool hasClipboard() const { return !m_clipboard.isEmpty(); }
@@ -90,10 +92,12 @@ signals:
     void textInsertionRequested(const QPoint& position);
     void simulationChanged(bool running);
     void simulationWarnings(const QStringList& warnings);
+    void zoomChanged(double scale);
 
 protected:
     void drawBackground(QPainter* painter, const QRectF& rect) override;
     void drawForeground(QPainter* painter, const QRectF& rect) override;
+    void contextMenuEvent(QContextMenuEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
@@ -108,6 +112,7 @@ private:
     void updateSceneRect();
     void updateCursor();
     QPoint snapUnits(const QPointF& scenePosition) const;
+    QPoint snapWirePoint(const QPointF& scenePosition, bool* snapped = nullptr) const;
     void ensurePanRoom();
 
     QGraphicsScene* m_scene = nullptr;
@@ -120,6 +125,7 @@ private:
     bool m_wireActive = false;
     QPoint m_wireStart;
     QPoint m_wireEnd;
+    bool m_wireEndSnapped = false;
 
     bool m_hasPending = false;
     cad::Object m_pending;

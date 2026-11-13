@@ -13,6 +13,7 @@ class QCloseEvent;
 class QDragEnterEvent;
 class QDropEvent;
 class QLabel;
+class QLineEdit;
 class QMenu;
 class QPlainTextEdit;
 class QTreeWidget;
@@ -52,6 +53,7 @@ private slots:
     void updateInspector(const cad::Object* object);
     void showPaletteItem(QTreeWidgetItem* item, int column);
     void placePaletteItem(QTreeWidgetItem* item, int column);
+    void filterPalette(const QString& text);
     void documentChanged();
 
 private:
@@ -72,8 +74,10 @@ private:
 
     CanvasView* m_view = nullptr;
     QLabel* m_positionLabel = nullptr;
+    QLabel* m_zoomLabel = nullptr;
     QLabel* m_documentLabel = nullptr;
     QPlainTextEdit* m_inspector = nullptr;
+    QLineEdit* m_paletteSearch = nullptr;
     QTreeWidget* m_paletteTree = nullptr;
     QMenu* m_recentMenu = nullptr;
     QAction* m_gridAction = nullptr;

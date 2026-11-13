@@ -1,11 +1,15 @@
 #include "ui/canvasview.h"
 
+#include <QAction>
+#include <QContextMenuEvent>
 #include <QGraphicsScene>
 #include <QImage>
 #include <QKeyEvent>
+#include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QScrollBar>
+#include <QTransform>
 #include <QUndoCommand>
 #include <QUndoStack>
 #include <QVarLengthArray>
@@ -13,6 +17,7 @@
 #include <QtMath>
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include "ui/caditem.h"
@@ -627,6 +632,15 @@ void CanvasView::copySelection()
               [](const cad::Object& a, const cad::Object& b) { return a.id < b.id; });
 }
 
+void CanvasView::cutSelection()
+{
+    if (m_scene->selectedItems().isEmpty())
+        return;
+
+    copySelection();
+    deleteSelection();
+}
+
 void CanvasView::paste()
 {
     if (m_clipboard.isEmpty())
@@ -714,6 +728,7 @@ void CanvasView::zoomAll()
     const double scale = transform().m11();
     if (scale > 3.0)
         resetTransform();
+    emit zoomChanged(transform().m11());
 }
 
 void CanvasView::setGridVisible(bool visible)
@@ -750,6 +765,55 @@ QPoint CanvasView::snapUnits(const QPointF& scenePosition) const
     const int step = int(kGridStepUnits);
     return QPoint(qRound(scenePosition.x() / kUnit / step) * step,
                   qRound(scenePosition.y() / kUnit / step) * step);
+}
+
+// Wire endpoints prefer real connection points: component pins, the ends of
+// existing wires and junction dots. The search radius is kept at roughly a
+// dozen screen pixels so snapping stays usable at every zoom level, and falls
+// back to the normal grid when nothing is close.
+QPoint CanvasView::snapWirePoint(const QPointF& scenePosition, bool* snapped) const
+{
+    const QPoint grid = snapUnits(scenePosition);
+    QPoint result = grid;
+    bool found = false;
+
+    const double zoom = qMax(0.01, transform().m11());
+    const double radius = qBound(4.0, 11.0 / zoom, 12.0);
+    double bestDistance = radius;
+
+    auto consider = [&](const QPointF& point) {
+        const QPointF delta = point - scenePosition;
+        const double distance = std::hypot(delta.x(), delta.y());
+        if (distance > bestDistance)
+            return;
+        bestDistance = distance;
+        found = true;
+        result = QPoint(qRound(point.x() / kUnit), qRound(point.y() / kUnit));
+    };
+
+    for (QGraphicsItem* graphicsItem : m_scene->items()) {
+        auto* item = qgraphicsitem_cast<CadItem*>(graphicsItem);
+        if (!item)
+            continue;
+
+        const cad::Object& object = item->object();
+        if (object.isComponent()) {
+            QTransform rotation;
+            if (object.rotation != 0)
+                rotation.rotate(object.rotation);
+            for (const QPointF& local : ui::terminalPositions(object))
+                consider(item->pos() + rotation.map(local));
+        } else if (object.isJunction()) {
+            consider(QPointF(item->object().x() * kUnit, item->object().y() * kUnit));
+        } else if (object.isLine() && !object.isWireGlyph()) {
+            consider(QPointF(object.x() * kUnit, object.y() * kUnit));
+            consider(QPointF(object.x2() * kUnit, object.y2() * kUnit));
+        }
+    }
+
+    if (snapped)
+        *snapped = found;
+    return result;
 }
 
 void CanvasView::emitSelection()
@@ -813,6 +877,10 @@ void CanvasView::drawForeground(QPainter* painter, const QRectF& rect)
     painter->setBrush(Qt::NoBrush);
     painter->drawLine(start, end);
     painter->drawRect(QRectF(start.x() - 4.0, start.y() - 4.0, 8.0, 8.0));
+    if (m_wireEndSnapped) {
+        painter->setPen(QPen(QColor(0, 120, 215), 2.0));
+        painter->drawEllipse(end, 5.0, 5.0);
+    }
     painter->restore();
 }
 
@@ -837,6 +905,7 @@ void CanvasView::applyZoom(double factor)
 
     scale(factor, factor);
     resetCachedContent();
+    emit zoomChanged(transform().m11());
 }
 
 void CanvasView::mousePressEvent(QMouseEvent* event)
@@ -865,23 +934,32 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
     }
 
     if (event->button() == Qt::LeftButton && m_tool != Tool::Select) {
-        const QPoint point = snapUnits(mapToScene(event->pos()));
+        bool snapped = false;
+        const QPoint point = snapWirePoint(mapToScene(event->pos()), &snapped);
 
         if (m_tool == Tool::Wire) {
             if (!m_wireActive) {
                 m_wireStart = point;
                 m_wireEnd = point;
+                m_wireEndSnapped = snapped;
                 m_wireActive = true;
-            } else {
+            } else if (point == m_wireStart) {
+                // Clicking the start point again finishes the run.
                 m_wireActive = false;
-                if (point != m_wireStart)
-                    insertObject(makeWireObject(m_wireStart, point));
+                m_wireEndSnapped = false;
+            } else {
+                insertObject(makeWireObject(m_wireStart, point));
+                // Keep drawing from the endpoint so a run of wires can be
+                // entered with one click per corner. Esc finishes the run.
+                m_wireStart = point;
+                m_wireEnd = point;
+                m_wireEndSnapped = snapped;
             }
             viewport()->update();
         } else if (m_tool == Tool::Junction) {
             insertObject(makeJunctionObject(point));
         } else if (m_tool == Tool::Text) {
-            emit textInsertionRequested(point);
+            emit textInsertionRequested(snapUnits(mapToScene(event->pos())));
         }
 
         event->accept();
@@ -933,9 +1011,11 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
     }
 
     if (m_wireActive) {
-        const QPoint point = snapUnits(scenePosition);
-        if (point != m_wireEnd) {
+        bool snapped = false;
+        const QPoint point = snapWirePoint(scenePosition, &snapped);
+        if (point != m_wireEnd || snapped != m_wireEndSnapped) {
             m_wireEnd = point;
+            m_wireEndSnapped = snapped;
             viewport()->update();
         }
     }
@@ -995,6 +1075,87 @@ void CanvasView::mouseDoubleClickEvent(QMouseEvent* event)
     }
 
     QGraphicsView::mouseDoubleClickEvent(event);
+}
+
+void CanvasView::contextMenuEvent(QContextMenuEvent* event)
+{
+    if (m_panning) {
+        event->ignore();
+        return;
+    }
+
+    // A right click finishes any half-finished wire or placement first, then
+    // works as the normal object menu.
+    if (m_hasPending || m_wireActive)
+        setTool(Tool::Select);
+
+    if (auto* item = qgraphicsitem_cast<CadItem*>(itemAt(event->pos()))) {
+        if (!item->isSelected()) {
+            m_scene->clearSelection();
+            item->setSelected(true);
+        }
+    }
+
+    const bool hasSelection = !m_scene->selectedItems().isEmpty();
+    const bool canRotate = !selectedObjects().isEmpty();
+
+    QMenu menu(this);
+    QAction* undoAction = menu.addAction(tr("&Undo"));
+    undoAction->setEnabled(m_undoStack->canUndo());
+    QAction* redoAction = menu.addAction(tr("&Redo"));
+    redoAction->setEnabled(m_undoStack->canRedo());
+    menu.addSeparator();
+
+    QAction* cutAction = menu.addAction(tr("Cu&t"));
+    cutAction->setEnabled(hasSelection);
+    QAction* copyAction = menu.addAction(tr("&Copy"));
+    copyAction->setEnabled(hasSelection);
+    QAction* pasteAction = menu.addAction(tr("&Paste"));
+    pasteAction->setEnabled(!m_clipboard.isEmpty());
+    QAction* duplicateAction = menu.addAction(tr("D&uplicate"));
+    duplicateAction->setEnabled(hasSelection);
+
+    menu.addSeparator();
+    QAction* rotateLeftAction = menu.addAction(tr("Rotate &Left"));
+    rotateLeftAction->setEnabled(canRotate);
+    QAction* rotateRightAction = menu.addAction(tr("Rotate Ri&ght"));
+    rotateRightAction->setEnabled(canRotate);
+    QAction* propertiesAction = menu.addAction(tr("P&roperties…"));
+    propertiesAction->setEnabled(hasSelection);
+
+    menu.addSeparator();
+    QAction* deleteAction = menu.addAction(tr("&Delete"));
+    deleteAction->setEnabled(hasSelection);
+    QAction* selectAllAction = menu.addAction(tr("Select &All"));
+
+    QAction* chosen = menu.exec(event->globalPos());
+    if (!chosen)
+        return;
+
+    if (chosen == undoAction)
+        m_undoStack->undo();
+    else if (chosen == redoAction)
+        m_undoStack->redo();
+    else if (chosen == cutAction)
+        cutSelection();
+    else if (chosen == copyAction)
+        copySelection();
+    else if (chosen == pasteAction)
+        paste();
+    else if (chosen == duplicateAction)
+        duplicateSelection();
+    else if (chosen == rotateLeftAction)
+        rotateSelection(-90);
+    else if (chosen == rotateRightAction)
+        rotateSelection(90);
+    else if (chosen == propertiesAction)
+        emit objectActivated();
+    else if (chosen == deleteAction)
+        deleteSelection();
+    else if (chosen == selectAllAction)
+        selectAll();
+
+    event->accept();
 }
 
 void CanvasView::keyPressEvent(QKeyEvent* event)
